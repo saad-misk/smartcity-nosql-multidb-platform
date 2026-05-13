@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Graph Explorer — SmartCity Platform</title>
+  <meta name="description" content="Explore the Neo4j urban relationship graph — citizens, departments, districts, and technicians."/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #1d4ed8;
+      --primary-lt: #dbeafe;
+      --primary-dk: #1e3a8a;
+      --accent:     #059669;
+      --accent-lt:  #d1fae5;
+      --surface:    #ffffff;
+      --bg:         #f8fafc;
+      --border:     #e2e8f0;
+      --border-dk:  #cbd5e1;
+      --text:       #0f172a;
+      --text-md:    #334155;
+      --text-lt:    #64748b;
+      --danger:     #dc2626;
+      --danger-lt:  #fee2e2;
+      --warn:       #d97706;
+      --warn-lt:    #fef3c7;
+      --purple:     #7c3aed;
+      --purple-lt:  #ede9fe;
+      --code-bg:    #0f172a;
+      --code-border:#1e293b;
+      --radius:     12px;
+      --shadow-sm:  0 1px 3px rgba(0,0,0,.08);
+      --shadow:     0 4px 12px rgba(0,0,0,.08);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh;
+    }
+
+    /* ── Nav ── */
+    .topnav {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 32px; display: flex; align-items: center; justify-content: space-between;
+      height: 60px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow-sm);
+    }
+    .logo {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 0.95rem; font-weight: 700; color: var(--primary); text-decoration: none;
+    }
+    .logo-icon {
+      width: 32px; height: 32px; background: var(--primary); border-radius: 7px;
+      display: flex; align-items: center; justify-content: center; color: white; font-size: 0.9rem;
+    }
+    .nav-pills { display: flex; gap: 2px; }
+    .nav-pill {
+      padding: 6px 13px; border-radius: 7px; font-size: 0.84rem;
+      font-weight: 500; color: var(--text-lt); text-decoration: none; transition: all .15s;
+    }
+    .nav-pill:hover { background: var(--bg); color: var(--text); }
+    .nav-pill.active { background: var(--primary-lt); color: var(--primary); font-weight: 600; }
+
+    /* ── Page Header ── */
+    .page-header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 24px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .page-title { font-size: 1.5rem; font-weight: 800; }
+    .page-desc { font-size: 0.84rem; color: var(--text-lt); margin-top: 3px; }
+
+    /* ── Neo4j link ── */
+    .neo4j-link {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 8px 16px; border-radius: 8px;
+      border: 1.5px solid rgba(29,78,216,.3);
+      background: var(--primary-lt); color: var(--primary);
+      font-size: 0.82rem; font-weight: 600; text-decoration: none;
+      transition: all .2s; white-space: nowrap;
+    }
+    .neo4j-link:hover { background: var(--primary); color: white; border-color: var(--primary); }
+
+    /* ── Main ── */
+    main { max-width: 1280px; margin: 0 auto; padding: 28px 32px 60px; }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.5px; color: var(--text-lt);
+      display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+    }
+    .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* ── Graph Stats ── */
+    .stats-row {
+      display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 22px;
+      box-shadow: var(--shadow-sm); min-width: 120px; text-align: center;
+      flex: 1;
+    }
+    .stat-val { font-size: 1.8rem; font-weight: 800; color: var(--primary); line-height: 1; }
+    .stat-lbl { font-size: 0.72rem; color: var(--text-lt); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 5px; }
+
+    /* ── Entity Legend ── */
+    .legend {
+      display: flex; gap: 12px; flex-wrap: wrap;
+      margin-bottom: 24px; padding: 14px 18px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; box-shadow: var(--shadow-sm);
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 500; color: var(--text-md); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* ── Query Grid ── */
+    .query-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 860px) { .query-grid { grid-template-columns: 1fr; } }
+
+    /* ── Query Card ── */
+    .query-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm);
+    }
+    .query-card-head {
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .query-card-title { font-size: 0.88rem; font-weight: 700; color: var(--text); }
+    .query-card-sub { font-size: 0.74rem; color: var(--text-lt); margin-top: 2px; }
+
+    /* ── Cypher Block ── */
+    .cypher-wrap {
+      background: var(--code-bg); padding: 14px 18px;
+      border-bottom: 1px solid var(--code-border);
+      overflow-x: auto; position: relative;
+    }
+    .cypher-label {
+      position: absolute; top: 8px; right: 10px;
+      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: #475569; font-family: monospace;
+    }
+    .cypher {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      line-height: 1.8; white-space: pre; color: #94a3b8;
+      padding-right: 60px;
+    }
+    .cypher .kw  { color: #f472b6; font-weight: 600; }
+    .cypher .fn  { color: #c084fc; }
+    .cypher .str { color: #86efac; }
+    .cypher .var { color: #7dd3fc; }
+    .cypher .com { color: #475569; font-style: italic; }
+
+    /* ── Run Button ── */
+    .btn-run {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 16px; border-radius: 8px; border: none;
+      background: var(--primary); color: white;
+      font-family: 'Inter', sans-serif; font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; transition: all .2s;
+    }
+    .btn-run:hover { background: var(--primary-dk); transform: translateY(-1px); }
+    .btn-run:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    /* ── Results ── */
+    .query-results { padding: 16px 20px; }
+    .results-actions { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    thead tr { border-bottom: 2px solid var(--border); }
+    th {
+      color: var(--text-lt); font-size: 0.68rem; text-transform: uppercase;
+      letter-spacing: 1px; font-weight: 600; padding: 0 8px 10px 0; text-align: left;
+    }
+    td { padding: 9px 8px 9px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border: none; }
+    .td-val { 
+      max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-weight: 500; color: var(--text-md);
+    }
+
+    /* ── Empty / Loading ── */
+    .empty { text-align: center; padding: 20px; color: var(--text-lt); font-size: 0.84rem; }
+    .empty-icon { font-size: 2rem; margin-bottom: 8px; }
+    .spin { animation: spin 1s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .result-count {
+      font-size: 0.75rem; color: var(--text-lt); font-weight: 600;
+      background: var(--bg); border: 1px solid var(--border);
+      padding: 3px 10px; border-radius: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav class="topnav">
+    <a href="/" class="logo">
+      <div class="logo-icon">🏙️</div>
+      <span>SmartCity Platform</span>
+    </a>
+    <div class="nav-pills">
+      <a href="/" class="nav-pill">Home</a>
+      <a href="/dashboard" class="nav-pill">Dashboard</a>
+      <a href="/submit" class="nav-pill">Report Issue</a>
+      <a href="/graph" class="nav-pill active">Graph Explorer</a>
+    </div>
+  </nav>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">🔗 Urban Graph Explorer</div>
+      <div class="page-desc">Live Cypher queries against the Neo4j relationship graph</div>
+    </div>
+    <a href="http://localhost:7474" target="_blank" class="neo4j-link">
+      Open Neo4j Browser ↗
+    </a>
+  </div>
+
+  <main>
+
+    <!-- Entity Legend -->
+    <div class="section-label">Node Types</div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#059669"></div>Citizen</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#1d4ed8"></div>Department</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#d97706"></div>District</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#7c3aed"></div>Technician</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#dc2626"></div>ServiceRequest</div>
+    </div>
+
+    <!-- Graph Stats -->
+    <div class="section-label">Graph Statistics · Neo4j</div>
+    <div class="stats-row" id="graphStats">
+      <div class="stat-card">
+        <div class="stat-val spin">⟳</div>
+        <div class="stat-lbl">Loading…</div>
+      </div>
+    </div>
+
+    <!-- Query Grid -->
+    <div class="section-label">Cypher Queries</div>
+    <div class="query-grid">
+
+      <!-- Query 1 -->
+      <div class="query-card">
+        <div class="query-card-head">
+          <div>
+            <div class="query-card-title">📍 Departments Sharing Districts</div>
+            <div class="query-card-sub">Find departments that cover the same geographic area</div>
+          </div>
+          <button class="btn-run" id="btn-shared" onclick="runQuery('shared-districts', this)">▶ Run</button>
+        </div>
+        <div class="cypher-wrap">
+          <div class="cypher-label">CYPHER</div>
+          <div class="cypher"><span class="kw">MATCH</span> (<span class="var">d1</span>:Department)-[:<span class="fn">COVERS</span>]->(<span class="var">dist</span>:District)
+      &lt;-[:<span class="fn">COVERS</span>]-(<span class="var">d2</span>:Department)
+<span class="kw">WHERE</span> <span class="var">d1</span>.id &lt; <span class="var">d2</span>.id
+<span class="kw">RETURN</span> <span class="var">d1</span>.name <span class="kw">AS</span> dept_a,
+       <span class="var">d2</span>.name <span class="kw">AS</span> dept_b,
+       <span class="var">dist</span>.name <span class="kw">AS</span> shared_district
+<span class="kw">ORDER BY</span> <span class="var">dist</span>.name</div>
+        </div>
+        <div class="query-results" id="res-shared-districts">
+          <div class="empty">Click <strong>▶ Run</strong> to execute this query</div>
+        </div>
+      </div>
+
+      <!-- Query 2 -->
+      <div class="query-card">
+        <div class="query-card-head">
+          <div>
+            <div class="query-card-title">🏆 Top Technicians by Performance</div>
+            <div class="query-card-sub">Ranked by number of resolved service requests</div>
+          </div>
+          <button class="btn-run" id="btn-tech" onclick="runQuery('top-technicians', this)">▶ Run</button>
+        </div>
+        <div class="cypher-wrap">
+          <div class="cypher-label">CYPHER</div>
+          <div class="cypher"><span class="kw">MATCH</span> (<span class="var">t</span>:Technician)-[:<span class="fn">RESOLVED</span>]->(<span class="var">r</span>:ServiceRequest)
+<span class="kw">RETURN</span> <span class="var">t</span>.name <span class="kw">AS</span> technician,
+       <span class="fn">COUNT</span>(<span class="var">r</span>) <span class="kw">AS</span> resolved
+<span class="kw">ORDER BY</span> resolved <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="str">5</span></div>
+        </div>
+        <div class="query-results" id="res-top-technicians">
+          <div class="empty">Click <strong>▶ Run</strong> to execute this query</div>
+        </div>
+      </div>
+
+      <!-- Query 3 -->
+      <div class="query-card">
+        <div class="query-card-head">
+          <div>
+            <div class="query-card-title">👷 Technicians per Department</div>
+            <div class="query-card-sub">Staff listing with resolved request counts</div>
+          </div>
+          <button class="btn-run" id="btn-dept" onclick="runQuery('dept-technicians', this)">▶ Run</button>
+        </div>
+        <div class="cypher-wrap">
+          <div class="cypher-label">CYPHER</div>
+          <div class="cypher"><span class="kw">MATCH</span> (<span class="var">t</span>:Technician)-[:<span class="fn">WORKS_FOR</span>]->(<span class="var">d</span>:Department)
+<span class="kw">OPTIONAL MATCH</span> (<span class="var">t</span>)-[:<span class="fn">RESOLVED</span>]->(<span class="var">r</span>:ServiceRequest)
+<span class="kw">RETURN</span> <span class="var">t</span>.name <span class="kw">AS</span> technician,
+       <span class="var">d</span>.name <span class="kw">AS</span> department,
+       <span class="fn">COUNT</span>(<span class="var">r</span>) <span class="kw">AS</span> resolved_count
+<span class="kw">ORDER BY</span> resolved_count <span class="kw">DESC</span></div>
+        </div>
+        <div class="query-results" id="res-dept-technicians">
+          <div class="empty">Click <strong>▶ Run</strong> to execute this query</div>
+        </div>
+      </div>
+
+      <!-- Query 4 -->
+      <div class="query-card">
+        <div class="query-card-head">
+          <div>
+            <div class="query-card-title">🗺️ Cross-District Reporters</div>
+            <div class="query-card-sub">Citizens filing reports outside their home district</div>
+          </div>
+          <button class="btn-run" id="btn-cross" onclick="runQuery('cross-district', this)">▶ Run</button>
+        </div>
+        <div class="cypher-wrap">
+          <div class="cypher-label">CYPHER</div>
+          <div class="cypher"><span class="kw">MATCH</span> (<span class="var">c</span>:Citizen)-[:<span class="fn">FILED</span>]->(<span class="var">r</span>:ServiceRequest)
+      -[:<span class="fn">LOCATED_IN</span>]->(<span class="var">d</span>:District)
+<span class="kw">WHERE NOT</span> (<span class="var">c</span>)-[:<span class="fn">LIVES_IN</span>]->(<span class="var">d</span>)
+<span class="kw">RETURN</span> <span class="var">c</span>.name <span class="kw">AS</span> citizen,
+       <span class="var">d</span>.name <span class="kw">AS</span> reported_district
+<span class="kw">LIMIT</span> <span class="str">20</span></div>
+        </div>
+        <div class="query-results" id="res-cross-district">
+          <div class="empty">Click <strong>▶ Run</strong> to execute this query</div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    const QUERY_MAP = {
+      'shared-districts': { url: '/api/graph/shared-districts',           key: 'shared_district_coverage' },
+      'top-technicians':  { url: '/api/graph/top-technicians',            key: 'top_technicians' },
+      'dept-technicians': { url: '/api/graph/department/dept_lighting/technicians', key: 'technicians' },
+      'cross-district':   { url: '/api/graph/cross-district-reporters',   key: 'cross_district_reporters' },
+    };
+
+    async function runQuery(name, btn) {
+      const q = QUERY_MAP[name];
+      const el = document.getElementById(`res-${name}`);
+      el.innerHTML = '<div class="empty"><div class="spin">⟳</div><div style="margin-top:6px">Running query…</div></div>';
+      btn.disabled = true;
+
+      try {
+        const res  = await fetch(q.url);
+        const data = await res.json();
+        const rows = data[q.key] || data.technicians || [];
+
+        if (!rows.length) {
+          el.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div>No results — seed the database first.</div></div>';
+        } else {
+          const cols = Object.keys(rows[0]);
+          el.innerHTML = `
+            <div class="results-actions">
+              <span class="result-count">${rows.length} row${rows.length > 1 ? 's' : ''} returned</span>
+            </div>
+            <table>
+              <thead><tr>${cols.map(c => `<th>${c.replace(/_/g,' ')}</th>`).join('')}</tr></thead>
+              <tbody>${rows.map(r =>
+                `<tr>${cols.map(c => `<td><div class="td-val" title="${r[c] ?? ''}"> ${r[c] ?? '—'}</div></td>`).join('')}</tr>`
+              ).join('')}</tbody>
+            </table>`;
+        }
+      } catch(e) {
+        el.innerHTML = `<div class="empty" style="color:var(--danger)">⚠ Error: ${e.message}</div>`;
+      }
+      btn.disabled = false;
+    }
+
+    async function loadStats() {
+      const res  = await fetch('/api/graph/stats');
+      const data = await res.json();
+      const nodes = data.nodes || {};
+      const rels  = data.relationships || 0;
+      const colorMap = { Citizen:'#059669', Department:'#1d4ed8', District:'#d97706', Technician:'#7c3aed', ServiceRequest:'#dc2626' };
+
+      const pills = Object.entries(nodes).map(([label, count]) =>
+        `<div class="stat-card">
+          <div class="stat-val" style="color:${colorMap[label] || 'var(--primary)'}"> ${count}</div>
+          <div class="stat-lbl">${label}s</div>
+        </div>`
+      ).join('');
+
+      document.getElementById('graphStats').innerHTML =
+        pills +
+        `<div class="stat-card">
+          <div class="stat-val" style="color:var(--text-lt)">${rels}</div>
+          <div class="stat-lbl">Relationships</div>
+        </div>`;
+    }
+
+    loadStats().catch(() => {
+      document.getElementById('graphStats').innerHTML =
+        '<div class="stat-card" style="flex:none"><div class="stat-val" style="color:var(--danger);font-size:1rem">⚠ Neo4j unavailable</div><div class="stat-lbl">Start Docker containers first</div></div>';
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Report an Issue — SmartCity Platform</title>
+  <meta name="description" content="Submit a city service request — report waste, lighting, traffic, or infrastructure issues and track their status."/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary:    #1d4ed8;
+      --primary-lt: #dbeafe;
+      --primary-dk: #1e3a8a;
+      --accent:     #059669;
+      --accent-lt:  #d1fae5;
+      --surface:    #ffffff;
+      --bg:         #f8fafc;
+      --border:     #e2e8f0;
+      --border-dk:  #cbd5e1;
+      --text:       #0f172a;
+      --text-md:    #334155;
+      --text-lt:    #64748b;
+      --danger:     #dc2626;
+      --danger-lt:  #fee2e2;
+      --warn:       #d97706;
+      --warn-lt:    #fef3c7;
+      --purple:     #7c3aed;
+      --purple-lt:  #ede9fe;
+      --radius:     12px;
+      --shadow-sm:  0 1px 3px rgba(0,0,0,.08);
+      --shadow:     0 4px 12px rgba(0,0,0,.08);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh;
+    }
+
+    /* ── Nav ── */
+    .topnav {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 32px; display: flex; align-items: center; justify-content: space-between;
+      height: 60px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow-sm);
+    }
+    .logo {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 0.95rem; font-weight: 700; color: var(--primary); text-decoration: none;
+    }
+    .logo-icon {
+      width: 32px; height: 32px; background: var(--primary); border-radius: 7px;
+      display: flex; align-items: center; justify-content: center; color: white; font-size: 0.9rem;
+    }
+    .nav-pills { display: flex; gap: 2px; }
+    .nav-pill {
+      padding: 6px 13px; border-radius: 7px; font-size: 0.84rem;
+      font-weight: 500; color: var(--text-lt); text-decoration: none; transition: all .15s;
+    }
+    .nav-pill:hover { background: var(--bg); color: var(--text); }
+    .nav-pill.active { background: var(--primary-lt); color: var(--primary); font-weight: 600; }
+
+    /* ── Page Header ── */
+    .page-header {
+      background: linear-gradient(135deg, var(--primary-dk), var(--primary));
+      padding: 40px 32px; color: white;
+    }
+    .page-title { font-size: 1.8rem; font-weight: 800; margin-bottom: 6px; }
+    .page-desc { font-size: 0.9rem; opacity: .8; line-height: 1.6; }
+
+    /* ── Layout ── */
+    .layout {
+      max-width: 1100px; margin: 0 auto; padding: 28px 24px 60px;
+      display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+    .card-head {
+      padding: 18px 22px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .card-head-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center; font-size: 1rem;
+    }
+    .card-head-icon.blue  { background: var(--primary-lt); }
+    .card-head-icon.green { background: var(--accent-lt); }
+    .card-head-title { font-size: 0.95rem; font-weight: 700; }
+    .card-head-sub { font-size: 0.75rem; color: var(--text-lt); margin-top: 1px; }
+    .card-body { padding: 22px; }
+
+    /* ── Form ── */
+    .field { margin-bottom: 18px; }
+    .field:last-of-type { margin-bottom: 0; }
+    label {
+      display: block; font-size: 0.78rem; font-weight: 600;
+      color: var(--text-md); margin-bottom: 6px;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .required { color: var(--danger); }
+    input, select, textarea {
+      width: 100%; background: var(--bg); border: 1.5px solid var(--border-dk);
+      color: var(--text); padding: 10px 14px; border-radius: 9px;
+      font-size: 0.9rem; font-family: 'Inter', sans-serif;
+      outline: none; transition: border-color .2s, box-shadow .2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary); box-shadow: 0 0 0 3px rgba(29,78,216,.1);
+    }
+    textarea { resize: vertical; min-height: 96px; line-height: 1.6; }
+    input::placeholder, textarea::placeholder { color: var(--text-lt); }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 500px) { .field-row { grid-template-columns: 1fr; } }
+
+    /* ── Category icons ── */
+    .cat-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px;
+    }
+    .cat-btn {
+      border: 2px solid var(--border); background: var(--surface);
+      border-radius: 10px; padding: 12px 8px; cursor: pointer;
+      text-align: center; transition: all .2s;
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+    }
+    .cat-btn:hover { border-color: var(--primary); background: var(--primary-lt); }
+    .cat-btn.selected { border-color: var(--primary); background: var(--primary-lt); }
+    .cat-btn-icon { font-size: 1.4rem; }
+    .cat-btn-label { font-size: 0.72rem; font-weight: 600; color: var(--text-md); line-height: 1.2; }
+
+    /* ── Submit Button ── */
+    .btn-submit {
+      width: 100%; padding: 13px; border-radius: 10px; border: none;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+      font-size: 0.95rem; font-weight: 700;
+      background: var(--primary); color: white;
+      box-shadow: 0 4px 12px rgba(29,78,216,.3);
+      transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+      margin-top: 20px;
+    }
+    .btn-submit:hover { background: var(--primary-dk); box-shadow: 0 6px 16px rgba(29,78,216,.35); transform: translateY(-1px); }
+    .btn-submit:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+    /* ── Messages ── */
+    .msg {
+      display: none; margin-top: 14px; padding: 12px 16px;
+      border-radius: 9px; font-size: 0.85rem; font-weight: 500; line-height: 1.5;
+    }
+    .msg.success { display: block; background: var(--accent-lt); color: var(--accent); border: 1px solid rgba(5,150,105,.2); }
+    .msg.error   { display: block; background: var(--danger-lt); color: var(--danger); border: 1px solid rgba(220,38,38,.2); }
+
+    /* ── Flow diagram ── */
+    .flow-diagram {
+      display: flex; align-items: center; gap: 0;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px; margin-bottom: 22px;
+      overflow-x: auto;
+    }
+    .flow-step {
+      display: flex; flex-direction: column; align-items: center;
+      min-width: 70px; flex-shrink: 0;
+    }
+    .flow-icon { font-size: 1.3rem; margin-bottom: 4px; }
+    .flow-name { font-size: 0.68rem; font-weight: 700; color: var(--text-md); }
+    .flow-db {
+      font-size: 0.62rem; font-weight: 600; margin-top: 2px;
+      padding: 1px 6px; border-radius: 4px;
+    }
+    .flow-db.mongo  { background: rgba(77,179,61,.12); color: #15803d; }
+    .flow-db.neo4j  { background: rgba(29,78,216,.1);  color: var(--primary); }
+    .flow-db.redis  { background: rgba(220,38,38,.08); color: var(--danger); }
+    .flow-db.cass   { background: var(--purple-lt); color: var(--purple); }
+    .flow-arrow { color: var(--text-lt); padding: 0 6px; font-size: 1rem; flex-shrink: 0; }
+
+    /* ── My Requests ── */
+    .req-list { display: flex; flex-direction: column; }
+    .req-item {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border);
+    }
+    .req-item:last-child { border: none; }
+    .req-cat { font-size: 0.85rem; font-weight: 600; color: var(--text); margin-bottom: 3px; text-transform: capitalize; }
+    .req-desc { font-size: 0.78rem; color: var(--text-lt); line-height: 1.4; }
+    .req-meta { font-size: 0.72rem; color: var(--text-lt); margin-top: 4px; }
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 0.72rem; font-weight: 600; border: 1px solid; white-space: nowrap; flex-shrink: 0;
+    }
+    .badge.OPEN       { background: var(--warn-lt); color: var(--warn); border-color: rgba(217,119,6,.2); }
+    .badge.RESOLVED   { background: var(--accent-lt); color: var(--accent); border-color: rgba(5,150,105,.2); }
+    .badge.IN_PROGRESS{ background: var(--primary-lt); color: var(--primary); border-color: rgba(29,78,216,.2); }
+    .badge.ASSIGNED   { background: var(--purple-lt); color: var(--purple); border-color: rgba(124,58,237,.2); }
+
+    /* ── Login prompt ── */
+    .login-prompt {
+      text-align: center; padding: 28px; color: var(--text-lt);
+    }
+    .login-prompt .icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .login-prompt a { color: var(--primary); font-weight: 600; }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.5px; color: var(--text-lt);
+      display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+    }
+    .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav class="topnav">
+    <a href="/" class="logo">
+      <div class="logo-icon">🏙️</div>
+      <span>SmartCity Platform</span>
+    </a>
+    <div class="nav-pills">
+      <a href="/" class="nav-pill">Home</a>
+      <a href="/dashboard" class="nav-pill">Dashboard</a>
+      <a href="/submit" class="nav-pill active">Report Issue</a>
+      <a href="/graph" class="nav-pill">Graph Explorer</a>
+    </div>
+  </nav>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-title">📋 Report a City Issue</div>
+    <div class="page-desc">
+      Your report is stored simultaneously across MongoDB, Neo4j, Redis, and Cassandra.
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <!-- LEFT: Form -->
+    <div>
+      <!-- DB Write Flow -->
+      <div class="section-label">Multi-Database Write Flow</div>
+      <div class="flow-diagram">
+        <div class="flow-step">
+          <div class="flow-icon">📋</div>
+          <div class="flow-name">Submit</div>
+          <div class="flow-db neo4j">Flask API</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">🍃</div>
+          <div class="flow-name">Store Doc</div>
+          <div class="flow-db mongo">MongoDB</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">🔗</div>
+          <div class="flow-name">Graph Edge</div>
+          <div class="flow-db neo4j">Neo4j</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">⚡</div>
+          <div class="flow-name">Cache</div>
+          <div class="flow-db redis">Redis</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">📝</div>
+          <div class="flow-name">Event Log</div>
+          <div class="flow-db cass">Cassandra</div>
+        </div>
+      </div>
+
+      <!-- Form Card -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-icon blue">📍</div>
+          <div>
+            <div class="card-head-title">New Service Request</div>
+            <div class="card-head-sub">All fields marked <span style="color:var(--danger)">*</span> are required</div>
+          </div>
+        </div>
+        <div class="card-body">
+
+          <!-- Category Picker -->
+          <div class="field">
+            <label>Category <span class="required">*</span></label>
+            <div class="cat-grid" id="catGrid">
+              <div class="cat-btn" onclick="selectCat('waste', this)">
+                <div class="cat-btn-icon">🗑️</div>
+                <div class="cat-btn-label">Waste &amp; Sanitation</div>
+              </div>
+              <div class="cat-btn" onclick="selectCat('lighting', this)">
+                <div class="cat-btn-icon">💡</div>
+                <div class="cat-btn-label">Street Lighting</div>
+              </div>
+              <div class="cat-btn" onclick="selectCat('traffic', this)">
+                <div class="cat-btn-icon">🚦</div>
+                <div class="cat-btn-label">Traffic &amp; Roads</div>
+              </div>
+              <div class="cat-btn" onclick="selectCat('infrastructure', this)">
+                <div class="cat-btn-icon">🏗️</div>
+                <div class="cat-btn-label">Infrastructure</div>
+              </div>
+              <div class="cat-btn" onclick="selectCat('water', this)">
+                <div class="cat-btn-icon">🚰</div>
+                <div class="cat-btn-label">Water &amp; Utilities</div>
+              </div>
+              <div class="cat-btn" onclick="selectCat('emergency', this)">
+                <div class="cat-btn-icon">🚨</div>
+                <div class="cat-btn-label">Emergency</div>
+              </div>
+            </div>
+            <input type="hidden" id="category"/>
+          </div>
+
+          <!-- Subcategory -->
+          <div class="field">
+            <label for="subcategory">Subcategory <span class="required">*</span></label>
+            <select id="subcategory">
+              <option value="">— Select a category first —</option>
+            </select>
+          </div>
+
+          <!-- Description -->
+          <div class="field">
+            <label for="description">Description <span class="required">*</span></label>
+            <textarea id="description" placeholder="Describe the issue in detail — location, severity, and any relevant context…"></textarea>
+          </div>
+
+          <!-- District + GPS -->
+          <div class="field-row">
+            <div class="field">
+              <label for="district">District <span class="required">*</span></label>
+              <select id="district">
+                <option value="dist_1">Old City</option>
+                <option value="dist_2">Commercial Center</option>
+                <option value="dist_3">University Zone</option>
+                <option value="dist_4">Northern Suburbs</option>
+                <option value="dist_5">Industrial Area</option>
+                <option value="dist_6">Residential East</option>
+                <option value="dist_7">Residential West</option>
+                <option value="dist_8">Southern Zone</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>GPS Coordinates</label>
+              <div style="display:flex;gap:8px">
+                <input type="number" id="lat" placeholder="Lat" value="31.902" step="0.001" style="text-align:center"/>
+                <input type="number" id="lng" placeholder="Lng" value="35.203" step="0.001" style="text-align:center"/>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-submit" id="submitBtn" onclick="submitRequest()">
+            🚀 Submit Request to City
+          </button>
+          <div id="submitMsg" class="msg"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: My Requests -->
+    <div>
+      <div class="section-label">Your History</div>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-icon green">📂</div>
+          <div>
+            <div class="card-head-title">My Recent Requests</div>
+            <div class="card-head-sub">Fetched from MongoDB · cached in Redis</div>
+          </div>
+        </div>
+        <div class="card-body" id="myRequests">
+          <div class="login-prompt">
+            <div class="icon">🔒</div>
+            <div>Please <a href="/">log in</a> to see your requests.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const CATS = {
+      waste:          ['Overflowing Bin', 'Illegal Dumping', 'Blocked Drainage'],
+      lighting:       ['Broken Lamp Post', 'Unlit Zone', 'Flickering Light'],
+      traffic:        ['Pothole', 'Road Closure', 'Signal Failure', 'Congestion'],
+      infrastructure: ['Broken Bench', 'Damaged Sidewalk', 'Graffiti'],
+      water:          ['Water Leak', 'Sewage Issue'],
+      emergency:      ['Flooding', 'Fire', 'Public Hazard'],
+    };
+
+    let selectedCat = '';
+
+    function selectCat(cat, el) {
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedCat = cat;
+      document.getElementById('category').value = cat;
+
+      const sel = document.getElementById('subcategory');
+      sel.innerHTML = (CATS[cat] || []).map(s => `<option value="${s}">${s}</option>`).join('');
+    }
+
+    function showMsg(text, type) {
+      const el = document.getElementById('submitMsg');
+      el.textContent = text; el.className = 'msg ' + type;
+    }
+
+    async function submitRequest() {
+      const token = localStorage.getItem('token');
+      if (!token) return showMsg('Please log in first to submit a request.', 'error');
+
+      const body = {
+        category:    document.getElementById('category').value,
+        subcategory: document.getElementById('subcategory').value,
+        description: document.getElementById('description').value.trim(),
+        district_id: document.getElementById('district').value,
+        lat:         parseFloat(document.getElementById('lat').value),
+        lng:         parseFloat(document.getElementById('lng').value),
+      };
+      if (!body.category) return showMsg('Please select a category.', 'error');
+      if (!body.description) return showMsg('Please provide a description.', 'error');
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true; btn.textContent = 'Submitting…';
+
+      const res  = await fetch('/api/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': token },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      btn.disabled = false; btn.innerHTML = '🚀 Submit Request to City';
+
+      if (res.ok) {
+        showMsg(`✓ Request submitted! ID: ${data.request_id} · Assigned to: ${data.assigned_to}`, 'success');
+        document.getElementById('description').value = '';
+        selectedCat = '';
+        document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+        document.getElementById('category').value = '';
+        loadMyRequests();
+      } else {
+        showMsg(data.error || 'Submission failed. Please try again.', 'error');
+      }
+    }
+
+    async function loadMyRequests() {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const res  = await fetch('/api/my-requests', { headers: { 'X-Session-Token': token } });
+      const data = await res.json();
+
+      if (!res.ok || !data.requests?.length) {
+        document.getElementById('myRequests').innerHTML =
+          `<div style="color:var(--text-lt);font-size:.84rem;padding:16px 0">No requests submitted yet.</div>`;
+        return;
+      }
+
+      const statusMap = { OPEN:'OPEN', RESOLVED:'RESOLVED', IN_PROGRESS:'IN_PROGRESS', ASSIGNED:'ASSIGNED' };
+      document.getElementById('myRequests').innerHTML =
+        `<div class="req-list">${data.requests.slice(0, 8).map(r => `
+          <div class="req-item">
+            <div>
+              <div class="req-cat">${r.category} · ${r.subcategory || ''}</div>
+              <div class="req-desc">${(r.description || '').slice(0, 80)}${r.description?.length > 80 ? '…' : ''}</div>
+            </div>
+            <span class="badge ${statusMap[r.status] || 'OPEN'}">${r.status}</span>
+          </div>
+        `).join('')}</div>`;
+    }
+
+    loadMyRequests();
+  </script>
+</body>
+</html>
