@@ -4,6 +4,11 @@ Member responsible: Saad
 
 Nodes:   Citizen, ServiceRequest, Department, District, Technician
 Edges:   FILED, ASSIGNED_TO, LOCATED_IN, WORKS_FOR, RESOLVED, LIVES_IN, COVERS, COLLABORATES_WITH
+
+Query categories:
+  A – Basic (schema understanding)
+  B – Intermediate (analytical value)
+  C – Advanced (graph-only power: shortest path, impact, gap analysis)
 """
 
 import os
@@ -70,6 +75,17 @@ def mark_request_resolved(request_id, tech_id):
             "MATCH (t:Technician {id: $tech_id}) "
             "MERGE (t)-[:RESOLVED]->(r)",
             req_id=request_id, tech_id=tech_id
+        )
+
+
+def link_request_to_district(request_id, district_id):
+    """Create LOCATED_IN relationship between a ServiceRequest and a District."""
+    driver = get_driver()
+    with driver.session() as s:
+        s.run(
+            "MATCH (r:ServiceRequest {id: $rid}), (d:District {id: $did}) "
+            "MERGE (r)-[:LOCATED_IN]->(d)",
+            rid=request_id, did=district_id
         )
 
 # ─────────────────────────────────────────────
@@ -240,3 +256,222 @@ def query_graph_stats():
         node_counts = {r["label"]: r["count"] for r in nodes}
         rel_count   = rels.single()["total"]
     return {"nodes": node_counts, "relationships": rel_count}
+
+
+# ─────────────────────────────────────────────
+# CATEGORY A — Basic Queries
+# ─────────────────────────────────────────────
+
+def query_department_coverage():
+    """A2. Which departments cover which districts (with COLLECT)."""
+    driver = get_driver()
+    with driver.session() as s:
+        result = s.run(
+            "MATCH (dept:Department)-[:COVERS]->(dist:District) "
+            "RETURN dept.name AS department, "
+            "       COLLECT(dist.name) AS districts_covered "
+            "ORDER BY dept.name"
+        )
+        rows = [dict(r) for r in result]
+    return rows
+
+
+def query_citizen_journey(citizen_name):
+    """A3. Full interaction chain for a citizen."""
+    driver = get_driver()
+    with driver.session() as s:
+        result = s.run(
+            "MATCH (c:Citizen {name: $name})-[:FILED]->(r:ServiceRequest) "
+            "       -[:ASSIGNED_TO]->(dept:Department) "
+            "OPTIONAL MATCH (t:Technician)-[:RESOLVED]->(r) "
+            "RETURN c.name AS citizen, r.category AS category, "
+            "       r.status AS status, dept.name AS department, "
+            "       t.name AS resolved_by",
+            name=citizen_name
+        )
+        rows = [dict(r) for r in result]
+    return rows
+
+
+# ─────────────────────────────────────────────
+# CATEGORY B — Intermediate Queries
+# ─────────────────────────────────────────────
+
+def query_district_workload():
+    """B3. Districts ranked by open-issue count."""
+    driver = get_driver()
+    with driver.session() as s:
+        result = s.run(
+            "MATCH (r:ServiceRequest)-[:LOCATED_IN]->(d:District) "
+            "WHERE r.status = 'OPEN' "
+            "RETURN d.name AS district, COUNT(r) AS open_issues "
+            "ORDER BY open_issues DESC"
+        )
+        rows = [dict(r) for r in result]
+    return rows
+
+
+def query_department_efficiency():
+    """B4. Resolved vs total per department."""
+    driver = get_driver()
+    with driver.session() as s:
+        result = s.run(
+            "MATCH (r:ServiceRequest)-[:ASSIGNED_TO]->(dept:Department) "
+            "WITH dept, COUNT(r) AS total, "
+            "     SUM(CASE WHEN r.status = 'RESOLVED' THEN 1 ELSE 0 END) AS resolved "
+            "RETURN dept.name AS department, total, resolved, "
+            "       CASE WHEN total > 0 THEN ROUND(100.0 * resolved / total, 1) "
+            "            ELSE 0 END AS resolution_rate_pct "
+            "ORDER BY resolution_rate_pct DESC"
+        )
+        rows = [dict(r) for r in result]
+    return rows
+
+
+# ─────────────────────────────────────────────
+# CATEGORY C — Advanced / Graph-Only Queries
+# ─────────────────────────────────────────────
+
+def query_shortest_path(from_name, to_name):
+    """C1. Shortest path between any Citizen and any Department."""
+    driver = get_driver()
+    with driver.session() as s:
+        result = s.run(
+            "MATCH (start:Citizen {name: $from_name}), "
+            "      (end:Department {name: $to_name}) "
+            "MATCH path = shortestPath((start)-[*]-(end)) "
+            "UNWIND nodes(path) AS n "
+            "RETURN labels(n)[0] AS type, n.name AS name, "
+            "       n.id AS id, n.category AS category",
+            from_name=from_name, to_name=to_name
+        )
+        rows = [dict(r) for r in result]
+    return rows
+
+
+def query_impact_analysis(dept_name):
+    """C2. If a department goes down, who/what is affected?"""
+    driver = get_driver()
+    with driver.session() as s:
+        result = s.run(
+            "MATCH (dept:Department {name: $name}) "
+            "OPTIONAL MATCH (dept)<-[:ASSIGNED_TO]-(r:ServiceRequest)<-[:FILED]-(c:Citizen) "
+            "OPTIONAL MATCH (dept)-[:COVERS]->(d:District) "
+            "RETURN dept.name AS department, "
+            "       COLLECT(DISTINCT c.name) AS affected_citizens, "
+            "       COLLECT(DISTINCT d.name) AS affected_districts, "
+            "       COUNT(DISTINCT r) AS requests_orphaned",
+            name=dept_name
+        )
+        row = result.single()
+    return dict(row) if row else {}
+
+
+def query_collaboration_gaps():
+    """C4. Departments that share districts but DON'T yet formally collaborate."""
+    driver = get_driver()
+    with driver.session() as s:
+        result = s.run(
+            "MATCH (d1:Department)-[:COVERS]->(dist:District)<-[:COVERS]-(d2:Department) "
+            "WHERE d1.id < d2.id "
+            "  AND NOT (d1)-[:COLLABORATES_WITH]-(d2) "
+            "RETURN d1.name AS dept_a, d2.name AS dept_b, "
+            "       COLLECT(dist.name) AS shared_districts, "
+            "       COUNT(dist) AS overlap_count "
+            "ORDER BY overlap_count DESC"
+        )
+        rows = [dict(r) for r in result]
+    return rows
+
+
+def query_district_connectivity():
+    """C5-alt. District connectivity score based on surrounding entities."""
+    driver = get_driver()
+    with driver.session() as s:
+        result = s.run(
+            "MATCH (d:District) "
+            "OPTIONAL MATCH (d)<-[:COVERS]-(dept:Department) "
+            "OPTIONAL MATCH (d)<-[:LIVES_IN]-(c:Citizen) "
+            "OPTIONAL MATCH (d)<-[:LOCATED_IN]-(r:ServiceRequest) "
+            "RETURN d.name AS district, "
+            "       COUNT(DISTINCT dept) AS departments, "
+            "       COUNT(DISTINCT c)    AS citizens, "
+            "       COUNT(DISTINCT r)    AS requests, "
+            "       COUNT(DISTINCT dept) + COUNT(DISTINCT c) AS connectivity_score "
+            "ORDER BY connectivity_score DESC"
+        )
+        rows = [dict(r) for r in result]
+    return rows
+
+
+def query_variable_length_path(district_name, max_hops=3):
+    """C5. All entities within N hops of a district."""
+    driver = get_driver()
+    with driver.session() as s:
+        result = s.run(
+            "MATCH path = (d:District {name: $name})-[*1.." + str(int(max_hops)) + "]-(connected) "
+            "RETURN DISTINCT labels(connected)[0] AS type, "
+            "       connected.name AS name, "
+            "       length(path) AS distance "
+            "ORDER BY distance, type",
+            name=district_name
+        )
+        rows = [dict(r) for r in result]
+    return rows
+
+
+# ─────────────────────────────────────────────
+# VISUAL GRAPH — returns nodes + edges for vis.js
+# ─────────────────────────────────────────────
+
+def query_visual_graph(limit=150):
+    """Return the full graph as nodes + edges for front-end visualization."""
+    driver = get_driver()
+    COLOR_MAP = {
+        "Citizen":        "#059669",
+        "Department":     "#1d4ed8",
+        "District":       "#d97706",
+        "Technician":     "#7c3aed",
+        "ServiceRequest": "#dc2626",
+    }
+    SHAPE_MAP = {
+        "Citizen":        "dot",
+        "Department":     "diamond",
+        "District":       "triangle",
+        "Technician":     "star",
+        "ServiceRequest": "square",
+    }
+    with driver.session() as s:
+        result = s.run(
+            "MATCH (a)-[r]->(b) "
+            "RETURN id(a) AS source_id, labels(a)[0] AS source_label, "
+            "       a.name AS source_name, a.id AS source_key, "
+            "       a.category AS source_cat, "
+            "       type(r) AS rel_type, "
+            "       id(b) AS target_id, labels(b)[0] AS target_label, "
+            "       b.name AS target_name, b.id AS target_key, "
+            "       b.category AS target_cat "
+            "LIMIT $limit",
+            limit=limit
+        )
+        nodes = {}
+        edges = []
+        for row in result:
+            for prefix in ("source", "target"):
+                nid   = row[f"{prefix}_id"]
+                label = row[f"{prefix}_label"]
+                name  = row[f"{prefix}_name"] or row[f"{prefix}_cat"] or row[f"{prefix}_key"]
+                if nid not in nodes:
+                    nodes[nid] = {
+                        "id":    nid,
+                        "label": name or str(nid),
+                        "group": label,
+                        "color": COLOR_MAP.get(label, "#888"),
+                        "shape": SHAPE_MAP.get(label, "dot"),
+                    }
+            edges.append({
+                "from":  row["source_id"],
+                "to":    row["target_id"],
+                "label": row["rel_type"],
+            })
+    return {"nodes": list(nodes.values()), "edges": edges}
