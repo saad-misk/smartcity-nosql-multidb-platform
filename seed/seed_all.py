@@ -94,6 +94,7 @@ def seed_all():
 
         # Neo4j request node + edges
         neo4j.create_request_node(rid, req["category"], "OPEN", cid, dept_id)
+        neo4j.link_request_to_district(rid, req["district"])
 
         # Redis — cache status + push to user recent
         redis_c.cache_request_status(rid, "OPEN")
@@ -112,7 +113,7 @@ def seed_all():
 
         print(f"  📋 Request: [{req['category']}] {req['sub']} → {rid}")
 
-    # 4. Simulate one resolution
+    # 4. Simulate resolutions
     if request_ids:
         rid = request_ids[0]
         cid = citizen_ids[0]
@@ -123,6 +124,26 @@ def seed_all():
         mongo.update_civic_score(cid, 5)
         redis_c.update_leaderboard(cid, 5)
         print(f"\n  ✅ Simulated resolution for request {rid}")
+
+    # Simulate more resolutions for richer graph queries
+    extra_resolutions = [
+        (1, "tech_2"),  # request index 1 resolved by tech_2
+        (2, "tech_3"),  # request index 2 resolved by tech_3
+        (4, "tech_4"),  # request index 4 resolved by tech_4
+        (6, "tech_1"),  # request index 6 resolved by tech_1 (2nd for tech_1)
+    ]
+    for idx, tech in extra_resolutions:
+        if idx < len(request_ids):
+            rid = request_ids[idx]
+            cid = citizen_ids[min(idx, len(citizen_ids) - 1)]
+            try:
+                mongo.update_request_status(rid, "RESOLVED", tech, "Issue resolved")
+            except Exception:
+                pass
+            neo4j.mark_request_resolved(rid, tech)
+            redis_c.invalidate_request_status(rid)
+            redis_c.cache_request_status(rid, "RESOLVED")
+            print(f"  ✅ Simulated resolution: request {rid} by {tech}")
 
     # Warm category cache
     redis_c.get_category_list()

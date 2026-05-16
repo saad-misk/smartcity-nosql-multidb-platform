@@ -129,14 +129,34 @@ smartcity/
 | GET    | /api/analytics/cassandra/events | Event log from Cassandra     |
 | GET    | /api/analytics/leaderboard      | Civic score (Redis sorted set)|
 
-### Graph (Neo4j)
+### Graph (Neo4j) — 13 Endpoints
+
+**Basic (Category A)**
 | Method | Endpoint                              | Description                  |
 |--------|---------------------------------------|------------------------------|
 | GET    | /api/graph/stats                      | Node + relationship counts   |
-| GET    | /api/graph/shared-districts           | Depts sharing a district     |
+| GET    | /api/graph/department-coverage        | Dept → district coverage map |
 | GET    | /api/graph/top-technicians            | Technician performance       |
-| GET    | /api/graph/department/<id>/technicians| Dept technician list         |
+| GET    | /api/graph/department/&lt;id&gt;/technicians| Dept technician list     |
+| GET    | /api/graph/citizen-journey?name=      | Full citizen interaction chain|
+
+**Intermediate (Category B)**
+| Method | Endpoint                              | Description                  |
+|--------|---------------------------------------|------------------------------|
+| GET    | /api/graph/shared-districts           | Depts sharing a district     |
 | GET    | /api/graph/cross-district-reporters   | Citizens outside home district|
+| GET    | /api/graph/district-workload          | Districts by open issues     |
+| GET    | /api/graph/department-efficiency      | Resolution rate per dept     |
+
+**Advanced / Graph-Only (Category C)**
+| Method | Endpoint                              | Description                  |
+|--------|---------------------------------------|------------------------------|
+| GET    | /api/graph/shortest-path?from=&to=    | shortestPath algorithm       |
+| GET    | /api/graph/impact-analysis?department=| Cascade impact analysis      |
+| GET    | /api/graph/collaboration-gaps         | Missing collaboration links  |
+| GET    | /api/graph/district-connectivity      | District health score        |
+| GET    | /api/graph/explore-district?name=     | Variable-length path scan    |
+| GET    | /api/graph/visual                     | Full graph for vis.js render |
 
 ---
 
