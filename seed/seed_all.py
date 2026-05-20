@@ -4,7 +4,7 @@ Run: python seed/seed_all.py
 """
 
 import sys, os
-from datetime import datetime
+from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -74,9 +74,9 @@ REQUESTS = [
 def seed_all():
     print("\nSeeding all databases...\n")
 
-    # 1. Init schemas
-    mongo.init_mongo()
-    neo4j.init_neo4j()
+    # 1. Init schemas (indexes for Mongo, constraints for Neo4j)
+    mongo.init_indexes()
+    neo4j.init_constraints()
     neo4j.seed_static_nodes()
 
     # 2. Reference data (Mongo)
@@ -139,6 +139,41 @@ def seed_all():
 
         print(f"  Citizen: {c['name']} -> {citizen_id}")
 
+    # 3b. Seed technician login accounts (profile docs were created above)
+    print("")
+    for tech in TECHNICIANS:
+        email = f"{tech['id']}@smartcity.local"
+        user_id = mongo.create_user(
+            username=tech["name"],
+            email=email,
+            password_hash=generate_password_hash("demo"),
+            role="technician",
+            technician_id=tech["id"],
+        )
+        if user_id is None:
+            existing = mongo.get_user_by_email(email)
+            user_id = existing["_id"] if existing else None
+        print(f"  Technician account: {email} -> {tech['name']}")
+
+    # 3c. Seed city-manager login accounts
+    print("")
+    MANAGERS = [
+        {"name": "Saad Misk",        "email": "saad@example.com"},
+        {"name": "Manager Haitham",  "email": "manager@example.com"},
+    ]
+    for m in MANAGERS:
+        user_id = mongo.create_user(
+            username=m["name"],
+            email=m["email"],
+            password_hash=generate_password_hash("demo"),
+            role="manager",
+        )
+        if user_id is None:
+            existing = mongo.get_user_by_email(m["email"])
+            user_id = existing["_id"] if existing else None
+        print(f"  Manager account: {m['email']} -> {m['name']}")
+    print("")
+
     # 4. Seed requests
     request_ids = []
     for req in REQUESTS:
@@ -178,11 +213,11 @@ def seed_all():
             "areaName": area["name"],
             "status": "pending",
             "priority": priority,
-            "createdAt": datetime.utcnow().isoformat(),
+            "createdAt": datetime.now(timezone.utc).isoformat(),
             "citizenName": citizen.get("name"),
         })
 
-        neo4j.create_request_node(rid, req["category"], "pending", cid, assignment.get("departmentId"))
+        neo4j.create_request_node(rid, req["category"], cid, assignment.get("departmentId"))
         neo4j.link_request_to_area(rid, area["id"])
 
         redis_c.cache_request_status(rid, "pending")

@@ -53,7 +53,13 @@ def create_session(user_id, role="citizen", citizen_id=None,
                    technician_id=None, username=None):
     r = get_redis()
     token = str(uuid.uuid4())
-    payload = {"user_id": user_id, "role": role}
+    payload = {
+        "user_id": user_id,
+        "role": role,
+        "citizen_id": citizen_id,
+        "technician_id": technician_id,
+        "username": username,
+    }
     r.setex(f"session:{token}", TTL_SESSION, json.dumps(payload))
     return token
 

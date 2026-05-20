@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph Explorer - SmartCity</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="nav">
+        <a href="/graph" class="nav-brand">SmartCity Platform</a>
+        <div class="nav-actions">
+            <a href="/dashboard" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Dashboard</a>
+            <a href="/analytics" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Analytics</a>
+            <button onclick="logout()" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container" id="graph-explorer">
+        <h2 style="margin-bottom: 1.5rem;">Neo4j Graph Explorer</h2>
+        <p style="color: #636e72; margin-bottom: 1.5rem;">
+            Explore the relationships between citizens, departments, areas, technicians, and requests.
+        </p>
+
+        <!-- Graph Stats -->
+        <div class="card-grid" id="graph-stats-row">
+            <div class="card stat">
+                <div class="stat-value" id="node-count">-</div>
+                <div class="stat-label">Total Nodes</div>
+            </div>
+            <div class="card stat">
+                <div class="stat-value" id="rel-count">-</div>
+                <div class="stat-label">Relationships</div>
+            </div>
+        </div>
+
+        <!-- Department Coverage -->
+        <div class="card">
+            <div class="card-header">Department Coverage (which areas each dept serves)</div>
+            <div id="department-coverage">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Top Technicians -->
+        <div class="card">
+            <div class="card-header">Top Technicians (by resolved requests)</div>
+            <div id="top-technicians">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Area Workload -->
+        <div class="card">
+            <div class="card-header">Area Workload (open requests per area)</div>
+            <div id="area-workload">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Collaboration Gaps -->
+        <div class="card">
+            <div class="card-header">Collaboration Gaps (depts sharing areas with no link)</div>
+            <div id="collaboration-gaps">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

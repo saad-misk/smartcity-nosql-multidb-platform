@@ -29,18 +29,14 @@
                             <label class="form-label" for="category">Category</label>
                             <select id="category" class="form-select" required>
                                 <option value="">Select category</option>
-                                <option value="Roads">Roads</option>
-                                <option value="Sanitation">Sanitation</option>
-                                <option value="Parks">Parks</option>
-                                <option value="Public Safety">Public Safety</option>
-                                <option value="Water">Water</option>
-                                <option value="Electricity">Electricity</option>
                             </select>
                         </div>
                         
                         <div class="form-group">
                             <label class="form-label" for="sub_category">Sub Category</label>
-                            <input type="text" id="sub_category" class="form-input" placeholder="e.g., Pothole, Broken light">
+                            <select id="sub_category" class="form-select" required>
+                                <option value="">Select sub-category</option>
+                            </select>
                         </div>
                     </div>
                     
@@ -49,27 +45,22 @@
                         <textarea id="description" class="form-textarea" placeholder="Describe the issue in detail..." required></textarea>
                     </div>
                     
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label" for="area_id">Area ID</label>
-                            <input type="text" id="area_id" class="form-input" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label" for="area_name">Area Name</label>
-                            <input type="text" id="area_name" class="form-input" required>
-                        </div>
+                    <div class="form-group">
+                        <label class="form-label" for="area_id">Area</label>
+                        <select id="area_id" class="form-select" required>
+                            <option value="">Select area</option>
+                        </select>
                     </div>
                     
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label" for="lat">Latitude</label>
-                            <input type="number" id="lat" class="form-input" step="any">
+                            <input type="number" id="lat" class="form-input" step="any" placeholder="e.g. 31.901">
                         </div>
                         
                         <div class="form-group">
                             <label class="form-label" for="lng">Longitude</label>
-                            <input type="number" id="lng" class="form-input" step="any">
+                            <input type="number" id="lng" class="form-input" step="any" placeholder="e.g. 35.202">
                         </div>
                     </div>
                     

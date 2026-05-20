@@ -13,15 +13,26 @@ Queries are grouped by complexity:
 import os
 from neo4j import GraphDatabase
 
+# A single, process-wide driver. The Neo4j Python driver is designed to be
+# shared across the application; creating a new driver for every call leaks
+# connections and eventually overwhelms the server.
+_driver = None
+
 
 def get_driver():
-    return GraphDatabase.driver(
-        os.getenv("NEO4J_URI",      "bolt://localhost:7687"),
-        auth=(
-            os.getenv("NEO4J_USER",     "neo4j"),
-            os.getenv("NEO4J_PASSWORD", "smartcity123"),
-        ),
-    )
+    
+    global _driver
+    if _driver is None:
+        _driver = GraphDatabase.driver(
+            os.getenv("NEO4J_URI",      "bolt://localhost:7687"),
+            auth=(
+                os.getenv("NEO4J_USER",     "neo4j"),
+                os.getenv("NEO4J_PASSWORD", "smartcity123"),
+            ),
+            max_connection_pool_size=50,
+            connection_acquisition_timeout=30,
+        )
+    return _driver
 
 
 def init_constraints():

@@ -12,8 +12,7 @@ analytics_bp = Blueprint("analytics", __name__)
 @analytics_bp.route("/api/analytics/overview", methods=["GET"])
 def overview():
     data = mongo.analytics_overview()
-    redis_info = redis_c.get_redis_info()
-    data["redis"] = redis_info
+    data["redis"] = redis_c.get_info()
     return jsonify(data), 200
 
 
@@ -34,7 +33,7 @@ def by_area():
 
 @analytics_bp.route("/api/analytics/response-time", methods=["GET"])
 def response_time():
-    data = mongo.analytics_avg_response_time()
+    data = mongo.analytics_avg_resolution_time()
     return jsonify({"departments": data}), 200
 
 

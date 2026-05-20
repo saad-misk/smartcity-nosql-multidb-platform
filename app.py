@@ -43,6 +43,11 @@ def graph_page():
     return render_template("graph.html")
 
 
+@app.route("/analytics")
+def analytics_page():
+    return render_template("analytics.html")
+
+
 # ─── Health Check ────────────────────────────────────────────────────────────
 
 @app.route("/health")
@@ -61,9 +66,7 @@ def health():
 
     try:
         from db import neo4j_client as neo4j
-        driver = neo4j.get_driver()
-        driver.verify_connectivity()
-        driver.close()
+        neo4j.get_driver().verify_connectivity()
         status["neo4j"] = "ok"
     except Exception:
         status["neo4j"] = "unavailable"
