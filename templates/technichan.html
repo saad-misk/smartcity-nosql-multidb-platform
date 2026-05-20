@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Technician — SmartCity</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #f4f6fb; --surface: #fff; --border: #e4e8f0;
+      --text: #1a1d27; --text-dim: #6b7080;
+      --accent: #2563eb; --accent-lt: #eff4ff;
+      --green: #059669; --green-lt: #ecfdf5;
+      --warn: #d97706; --warn-lt: #fffbeb;
+      --red: #dc2626; --red-lt: #fef2f2;
+      --purple: #7c3aed; --purple-lt: #f5f3ff;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    nav {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 24px; display: flex; align-items: center; justify-content: space-between;
+      height: 56px; position: sticky; top: 0; z-index: 50;
+    }
+    .nav-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.95rem; color: var(--accent); }
+    .nav-brand span { font-size: 1.2rem; }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .nav-user { font-size: 0.82rem; color: var(--text-dim); }
+    .nav-user strong { color: var(--text); }
+    .btn-logout { padding: 5px 13px; border-radius: 8px; border: 1px solid var(--border); background: transparent; font-size: 0.8rem; font-weight: 600; cursor: pointer; color: var(--text-dim); font-family: 'DM Sans', sans-serif; transition: all .15s; }
+    .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+    main { max-width: 960px; margin: 0 auto; padding: 24px 20px 60px; }
+
+    .section-lbl { font-size: 0.69rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .section-lbl::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* Stats */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+    @media(max-width:600px){ .stats { grid-template-columns: 1fr 1fr; } }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+    .stat-val { font-size: 1.8rem; font-weight: 800; line-height: 1; }
+    .stat-lbl { font-size: 0.73rem; color: var(--text-dim); font-weight: 600; margin-top: 4px; }
+
+    /* Filter bar */
+    .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+    .filter-btn {
+      padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+      background: var(--surface); font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; color: var(--text-dim); font-family: 'DM Sans', sans-serif; transition: all .15s;
+    }
+    .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .filter-right { margin-left: auto; }
+    .search-inp { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.83rem; font-family: 'DM Sans', sans-serif; outline: none; background: var(--surface); }
+    .search-inp:focus { border-color: var(--accent); }
+
+    /* Request cards */
+    .req-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px; margin-bottom: 12px;
+      display: flex; gap: 16px; align-items: flex-start; transition: box-shadow .15s;
+    }
+    .req-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,.07); }
+    .req-body { flex: 1; min-width: 0; }
+    .req-top { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+    .req-id { font-family: monospace; font-size: 0.72rem; color: var(--text-dim); background: var(--bg); padding: 2px 8px; border-radius: 5px; border: 1px solid var(--border); }
+    .req-cat { font-size: 0.9rem; font-weight: 700; }
+    .req-sub { font-size: 0.8rem; color: var(--text-dim); }
+    .req-desc { font-size: 0.83rem; color: var(--text-dim); line-height: 1.5; margin: 6px 0; }
+    .req-meta { font-size: 0.75rem; color: var(--text-dim); display: flex; gap: 14px; flex-wrap: wrap; }
+    .req-meta span { display: flex; align-items: center; gap: 4px; }
+
+    .req-actions { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+    .status-sel {
+      padding: 7px 10px; border-radius: 8px; border: 1.5px solid var(--border);
+      font-size: 0.82rem; font-family: 'DM Sans', sans-serif; background: var(--surface);
+      color: var(--text); outline: none; cursor: pointer; width: 140px;
+    }
+    .status-sel:focus { border-color: var(--accent); }
+    .btn-update {
+      padding: 7px 14px; border-radius: 8px; border: none;
+      background: var(--accent); color: #fff;
+      font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 700;
+      cursor: pointer; transition: all .18s; white-space: nowrap;
+    }
+    .btn-update:hover { filter: brightness(1.1); }
+    .btn-update:disabled { opacity: .5; cursor: not-allowed; }
+    .update-msg { font-size: 0.72rem; color: var(--green); font-weight: 600; display: none; }
+
+    .badge { padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; border: 1px solid; white-space: nowrap; }
+    .badge.pending     { background: var(--warn-lt);   color: var(--warn);   border-color: rgba(217,119,6,.2); }
+    .badge.assigned    { background: var(--purple-lt); color: var(--purple); border-color: rgba(124,58,237,.2); }
+    .badge.in_progress { background: var(--accent-lt); color: var(--accent); border-color: rgba(37,99,235,.2); }
+    .badge.resolved    { background: var(--green-lt);  color: var(--green);  border-color: rgba(5,150,105,.2); }
+
+    .empty-state { text-align: center; padding: 48px; color: var(--text-dim); }
+    .empty-state .ei { font-size: 2.5rem; margin-bottom: 10px; }
+    .spin { animation: spin 1s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><span>🏙️</span> SmartCity</div>
+  <div class="nav-right">
+    <div class="nav-user">Technician · <strong id="navName">—</strong></div>
+    <button class="btn-logout" onclick="logout()">Sign Out</button>
+  </div>
+</nav>
+
+<main>
+  <div class="section-lbl">Department Overview</div>
+  <div class="stats" id="statsRow">
+    <div class="stat"><div class="stat-val" id="sPending">—</div><div class="stat-lbl">Pending</div></div>
+    <div class="stat"><div class="stat-val" id="sAssigned" style="color:var(--purple)">—</div><div class="stat-lbl">Assigned</div></div>
+    <div class="stat"><div class="stat-val" id="sInProgress" style="color:var(--accent)">—</div><div class="stat-lbl">In Progress</div></div>
+    <div class="stat"><div class="stat-val" id="sResolved" style="color:var(--green)">—</div><div class="stat-lbl">Resolved</div></div>
+  </div>
+
+  <div class="section-lbl">Service Requests</div>
+
+  <div class="filter-bar">
+    <button class="filter-btn active" data-status="all" onclick="filterStatus('all',this)">All</button>
+    <button class="filter-btn" data-status="pending" onclick="filterStatus('pending',this)">Pending</button>
+    <button class="filter-btn" data-status="assigned" onclick="filterStatus('assigned',this)">Assigned</button>
+    <button class="filter-btn" data-status="in_progress" onclick="filterStatus('in_progress',this)">In Progress</button>
+    <button class="filter-btn" data-status="resolved" onclick="filterStatus('resolved',this)">Resolved</button>
+    <div class="filter-right">
+      <input class="search-inp" type="text" id="searchInp" placeholder="🔍 Search description…" oninput="renderList()"/>
+    </div>
+  </div>
+
+  <div id="requestList"><div class="empty-state"><div class="ei spin">⟳</div><div>Loading requests…</div></div></div>
+</main>
+
+<script>
+  const name = localStorage.getItem('name') || '—';
+  document.getElementById('navName').textContent = name;
+  if (!localStorage.getItem('token')) window.location.href = 'login.html';
+  function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+
+  let allRequests = [];
+  let activeFilter = 'all';
+
+  // Demo data for prototype
+  const DEMO = [
+    { _id:'req_001', category:'waste', subCategory:'Overflowing Bin', description:'Large bin near the university gate is overflowing, causing a health hazard.', areaName:'University Zone', status:'pending', priority:'high', citizen:{citizenName:'Ahmed Khalidi'}, timestamps:{createdAt:'2025-05-18T09:00:00Z'} },
+    { _id:'req_002', category:'lighting', subCategory:'Broken Lamp Post', description:'Two street lights on the main road near pharmacy have been broken for 3 days.', areaName:'Old City', status:'assigned', priority:'medium', citizen:{citizenName:'Sara Hassan'}, timestamps:{createdAt:'2025-05-17T14:30:00Z'} },
+    { _id:'req_003', category:'traffic', subCategory:'Pothole', description:'Deep pothole in front of the old post office causing traffic issues.', areaName:'Commercial Center', status:'in_progress', priority:'high', citizen:{citizenName:'Omar Nasser'}, timestamps:{createdAt:'2025-05-16T10:00:00Z'} },
+    { _id:'req_004', category:'infrastructure', subCategory:'Damaged Sidewalk', description:'Sidewalk tiles are broken and loose near the elementary school — safety risk for children.', areaName:'Residential East', status:'resolved', priority:'medium', citizen:{citizenName:'Layla Jaber'}, timestamps:{createdAt:'2025-05-15T08:00:00Z'} },
+    { _id:'req_005', category:'water', subCategory:'Water Leak', description:'Visible water leak on the corner of Al-Nuzha street, water pooling on road.', areaName:'Northern Suburbs', status:'pending', priority:'high', citizen:{citizenName:'Khalid Arar'}, timestamps:{createdAt:'2025-05-19T07:00:00Z'} },
+  ];
+
+  function filterStatus(status, el) {
+    activeFilter = status;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.status === status));
+    renderList();
+  }
+
+  function renderList() {
+    const q = document.getElementById('searchInp').value.toLowerCase();
+    const list = allRequests.filter(r => {
+      const statusMatch = activeFilter === 'all' || r.status === activeFilter;
+      const textMatch   = !q || (r.description||'').toLowerCase().includes(q) || (r.category||'').includes(q);
+      return statusMatch && textMatch;
+    });
+
+    if (!list.length) {
+      document.getElementById('requestList').innerHTML = '<div class="empty-state"><div class="ei">📭</div><div>No requests match this filter.</div></div>';
+      return;
+    }
+
+    document.getElementById('requestList').innerHTML = list.map(r => `
+      <div class="req-card">
+        <div class="req-body">
+          <div class="req-top">
+            <span class="req-id">${r._id}</span>
+            <span class="badge ${r.status}">${r.status.replace('_',' ')}</span>
+            <span class="badge" style="background:var(--bg);color:var(--text-dim);border-color:var(--border)">${r.priority||'medium'} priority</span>
+          </div>
+          <div class="req-cat">${r.category} <span class="req-sub">· ${r.subCategory||''}</span></div>
+          <div class="req-desc">${r.description||''}</div>
+          <div class="req-meta">
+            <span>📍 ${r.areaName||r.areaId||'—'}</span>
+            <span>👤 ${r.citizen?.citizenName||'—'}</span>
+            <span>🕐 ${new Date(r.timestamps?.createdAt||r.createdAt||Date.now()).toLocaleDateString()}</span>
+          </div>
+        </div>
+        <div class="req-actions">
+          <select class="status-sel" id="sel-${r._id}">
+            <option value="pending"     ${r.status==='pending'     ?'selected':''}>Pending</option>
+            <option value="assigned"    ${r.status==='assigned'    ?'selected':''}>Assigned</option>
+            <option value="in_progress" ${r.status==='in_progress' ?'selected':''}>In Progress</option>
+            <option value="resolved"    ${r.status==='resolved'    ?'selected':''}>Resolved</option>
+          </select>
+          <button class="btn-update" onclick="updateStatus('${r._id}', this)">Update Status</button>
+          <span class="update-msg" id="msg-${r._id}">✓ Updated</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function updateStatus(id, btn) {
+    const newStatus = document.getElementById('sel-' + id).value;
+    const token = localStorage.getItem('token');
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/requests/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': token },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        const req = allRequests.find(r => r._id === id);
+        if (req) req.status = newStatus;
+        const msg = document.getElementById('msg-' + id);
+        msg.style.display = 'block';
+        updateStats();
+        setTimeout(() => { msg.style.display = 'none'; renderList(); }, 1200);
+      }
+    } catch {
+      // Demo: update locally
+      const req = allRequests.find(r => r._id === id);
+      if (req) req.status = newStatus;
+      const msg = document.getElementById('msg-' + id);
+      msg.style.display = 'block';
+      updateStats();
+      setTimeout(() => { msg.style.display = 'none'; renderList(); }, 1200);
+    }
+    btn.disabled = false;
+  }
+
+  function updateStats() {
+    const counts = { pending:0, assigned:0, in_progress:0, resolved:0 };
+    allRequests.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
+    document.getElementById('sPending').textContent    = counts.pending;
+    document.getElementById('sAssigned').textContent  = counts.assigned;
+    document.getElementById('sInProgress').textContent = counts.in_progress;
+    document.getElementById('sResolved').textContent  = counts.resolved;
+  }
+
+  async function loadRequests() {
+    const token = localStorage.getItem('token');
+    try {
+      const res  = await fetch('/api/dept-requests', { headers: { 'X-Session-Token': token } });
+      const data = await res.json();
+      if (res.ok && data.requests?.length) {
+        allRequests = data.requests;
+        updateStats(); renderList(); return;
+      }
+    } catch {}
+    // Fallback to demo data
+    allRequests = DEMO;
+    updateStats(); renderList();
+  }
+
+  loadRequests();
+</script>
+</body>
+</html>

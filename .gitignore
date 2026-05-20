@@ -16,3 +16,4 @@ htmlcov/
 instance/
 # Ignore OS generated files
 Thumbs.db
+local/

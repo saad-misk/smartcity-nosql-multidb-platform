@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Graph Explorer — SmartCity Platform</title>
-  <meta name="description" content="Explore the Neo4j urban relationship graph — citizens, departments, districts, and technicians."/>
+  <meta name="description" content="Explore the Neo4j urban relationship graph — citizens, departments, areas, and technicians."/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
   <link rel="stylesheet" href="/static/graph.css"/>
@@ -38,7 +38,7 @@
     <div class="legend">
       <div class="legend-item"><div class="legend-dot" style="background:#059669"></div>Citizen</div>
       <div class="legend-item"><div class="legend-dot" style="background:#1d4ed8"></div>Department</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#d97706"></div>District</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#d97706"></div>Area</div>
       <div class="legend-item"><div class="legend-dot" style="background:#7c3aed"></div>Technician</div>
       <div class="legend-item"><div class="legend-dot" style="background:#dc2626"></div>ServiceRequest</div>
     </div>
@@ -58,34 +58,22 @@
       <div id="graphCanvas"></div>
     </div>
 
-    <!-- Category Tabs -->
+    <!-- Queries (Minimal Set) -->
     <div class="section-label">Cypher Queries</div>
-    <div class="cat-tabs">
-      <button class="cat-tab active" data-cat="all" onclick="filterCat('all')">All <span class="badge">13</span></button>
-      <button class="cat-tab" data-cat="A" onclick="filterCat('A')">🟢 Basic <span class="badge">3</span></button>
-      <button class="cat-tab" data-cat="B" onclick="filterCat('B')">🟡 Intermediate <span class="badge">4</span></button>
-      <button class="cat-tab" data-cat="C" onclick="filterCat('C')">🔴 Advanced <span class="badge">5</span></button>
-    </div>
-
     <div class="query-grid">
-
-      <!-- ═══ CATEGORY A: BASIC ═══ -->
-
-      <!-- A1: Dept Coverage -->
-      <div class="query-card visible" data-cat="A">
+      <div class="query-card visible">
         <div class="query-card-head">
-          <div><div class="query-card-title">🗺️ Department Coverage Map</div><div class="query-card-sub">Which departments cover which districts (COLLECT aggregation)</div></div>
+          <div><div class="query-card-title">🗺️ Department Coverage Map</div><div class="query-card-sub">Which departments cover which areas</div></div>
           <button class="btn-run" onclick="runQuery('dept-coverage',this)">▶ Run</button>
         </div>
         <div class="cypher-wrap"><div class="cypher-label">CYPHER</div>
-<div class="cypher"><span class="kw">MATCH</span> (<span class="var">dept</span>:Department)-[:<span class="fn">COVERS</span>]->(<span class="var">dist</span>:District)
-<span class="kw">RETURN</span> <span class="var">dept</span>.name, <span class="fn">COLLECT</span>(<span class="var">dist</span>.name)
+<div class="cypher"><span class="kw">MATCH</span> (<span class="var">dept</span>:Department)-[:<span class="fn">COVERS</span>]->(<span class="var">area</span>:Area)
+<span class="kw">RETURN</span> <span class="var">dept</span>.name, <span class="fn">COLLECT</span>(<span class="var">area</span>.name)
 <span class="kw">ORDER BY</span> <span class="var">dept</span>.name</div></div>
         <div class="query-results" id="res-dept-coverage"><div class="empty">Click <strong>▶ Run</strong> to execute</div></div>
       </div>
 
-      <!-- A2: Top Technicians -->
-      <div class="query-card visible" data-cat="A">
+      <div class="query-card visible">
         <div class="query-card-head">
           <div><div class="query-card-title">🏆 Top Technicians</div><div class="query-card-sub">Ranked by resolved service requests</div></div>
           <button class="btn-run" onclick="runQuery('top-technicians',this)">▶ Run</button>
@@ -96,187 +84,6 @@
 <span class="kw">ORDER BY</span> resolved <span class="kw">DESC LIMIT</span> <span class="str">5</span></div></div>
         <div class="query-results" id="res-top-technicians"><div class="empty">Click <strong>▶ Run</strong> to execute</div></div>
       </div>
-
-      <!-- A3: Citizen Journey -->
-      <div class="query-card visible" data-cat="A">
-        <div class="query-card-head">
-          <div><div class="query-card-title">👤 Citizen Request Journey</div><div class="query-card-sub">Full interaction chain for a citizen</div></div>
-          <button class="btn-run" onclick="runQuery('citizen-journey',this)">▶ Run</button>
-        </div>
-        <div class="param-row">
-          <label>Citizen Name:</label>
-          <select id="param-citizen-journey">
-            <option>Ahmed Al-Khalidi</option><option>Fatima Nasser</option><option>Omar Barakat</option><option>Layla Mustafa</option><option>Yusuf Haddad</option>
-          </select>
-        </div>
-        <div class="cypher-wrap"><div class="cypher-label">CYPHER</div>
-<div class="cypher"><span class="kw">MATCH</span> (<span class="var">c</span>:Citizen)-[:<span class="fn">FILED</span>]->(<span class="var">r</span>:ServiceRequest)
-      -[:<span class="fn">ASSIGNED_TO</span>]->(<span class="var">dept</span>:Department)
-<span class="kw">OPTIONAL MATCH</span> (<span class="var">t</span>:Technician)-[:<span class="fn">RESOLVED</span>]->(<span class="var">r</span>)
-<span class="kw">RETURN</span> <span class="var">c</span>.name, <span class="var">r</span>.category, <span class="var">r</span>.status, <span class="var">dept</span>.name, <span class="var">t</span>.name</div></div>
-        <div class="query-results" id="res-citizen-journey"><div class="empty">Click <strong>▶ Run</strong> to execute</div></div>
-      </div>
-
-      <!-- ═══ CATEGORY B: INTERMEDIATE ═══ -->
-
-      <!-- B1: Shared Districts -->
-      <div class="query-card visible" data-cat="B">
-        <div class="query-card-head">
-          <div><div class="query-card-title">📍 Departments Sharing Districts</div><div class="query-card-sub">Departments that cover the same geographic area</div></div>
-          <button class="btn-run" onclick="runQuery('shared-districts',this)">▶ Run</button>
-        </div>
-        <div class="cypher-wrap"><div class="cypher-label">CYPHER</div>
-<div class="cypher"><span class="kw">MATCH</span> (<span class="var">d1</span>:Department)-[:<span class="fn">COVERS</span>]->(<span class="var">dist</span>:District)
-      <-[:<span class="fn">COVERS</span>]-(<span class="var">d2</span>:Department)
-<span class="kw">WHERE</span> <span class="var">d1</span>.id < <span class="var">d2</span>.id
-<span class="kw">RETURN</span> <span class="var">d1</span>.name, <span class="var">d2</span>.name, <span class="var">dist</span>.name</div></div>
-        <div class="query-results" id="res-shared-districts"><div class="empty">Click <strong>▶ Run</strong> to execute</div></div>
-      </div>
-
-      <!-- B2: Cross-District -->
-      <div class="query-card visible" data-cat="B">
-        <div class="query-card-head">
-          <div><div class="query-card-title">🗺️ Cross-District Reporters</div><div class="query-card-sub">Citizens filing reports outside their home district</div></div>
-          <button class="btn-run" onclick="runQuery('cross-district',this)">▶ Run</button>
-        </div>
-        <div class="cypher-wrap"><div class="cypher-label">CYPHER</div>
-<div class="cypher"><span class="kw">MATCH</span> (<span class="var">c</span>:Citizen)-[:<span class="fn">FILED</span>]->(<span class="var">r</span>:ServiceRequest)
-      -[:<span class="fn">LOCATED_IN</span>]->(<span class="var">d</span>:District)
-<span class="kw">WHERE NOT</span> (<span class="var">c</span>)-[:<span class="fn">LIVES_IN</span>]->(<span class="var">d</span>)
-<span class="kw">RETURN</span> <span class="var">c</span>.name, <span class="var">d</span>.name</div></div>
-        <div class="query-results" id="res-cross-district"><div class="empty">Click <strong>▶ Run</strong> to execute</div></div>
-      </div>
-
-      <!-- B3: District Workload -->
-      <div class="query-card visible" data-cat="B">
-        <div class="query-card-head">
-          <div><div class="query-card-title">🔥 District Workload Heatmap</div><div class="query-card-sub">Districts ranked by open issue count</div></div>
-          <button class="btn-run" onclick="runQuery('district-workload',this)">▶ Run</button>
-        </div>
-        <div class="cypher-wrap"><div class="cypher-label">CYPHER</div>
-<div class="cypher"><span class="kw">MATCH</span> (<span class="var">r</span>:ServiceRequest)-[:<span class="fn">LOCATED_IN</span>]->(<span class="var">d</span>:District)
-<span class="kw">WHERE</span> <span class="var">r</span>.status = <span class="str">'OPEN'</span>
-<span class="kw">RETURN</span> <span class="var">d</span>.name, <span class="fn">COUNT</span>(<span class="var">r</span>) <span class="kw">AS</span> open_issues
-<span class="kw">ORDER BY</span> open_issues <span class="kw">DESC</span></div></div>
-        <div class="query-results" id="res-district-workload"><div class="empty">Click <strong>▶ Run</strong> to execute</div></div>
-      </div>
-
-      <!-- B4: Dept Efficiency -->
-      <div class="query-card visible" data-cat="B">
-        <div class="query-card-head">
-          <div><div class="query-card-title">📊 Department Efficiency</div><div class="query-card-sub">Resolved vs total — resolution rate percentage</div></div>
-          <button class="btn-run" onclick="runQuery('dept-efficiency',this)">▶ Run</button>
-        </div>
-        <div class="cypher-wrap"><div class="cypher-label">CYPHER</div>
-<div class="cypher"><span class="kw">MATCH</span> (<span class="var">r</span>:ServiceRequest)-[:<span class="fn">ASSIGNED_TO</span>]->(<span class="var">dept</span>:Department)
-<span class="kw">WITH</span> dept, <span class="fn">COUNT</span>(r) <span class="kw">AS</span> total,
-     <span class="fn">SUM</span>(<span class="kw">CASE WHEN</span> r.status=<span class="str">'RESOLVED'</span> <span class="kw">THEN</span> 1 <span class="kw">ELSE</span> 0 <span class="kw">END</span>) <span class="kw">AS</span> resolved
-<span class="kw">RETURN</span> dept.name, total, resolved,
-       <span class="fn">ROUND</span>(100.0*resolved/total, 1) <span class="kw">AS</span> rate_pct</div></div>
-        <div class="query-results" id="res-dept-efficiency"><div class="empty">Click <strong>▶ Run</strong> to execute</div></div>
-      </div>
-
-      <!-- ═══ CATEGORY C: ADVANCED ═══ -->
-
-      <!-- C1: Shortest Path -->
-      <div class="query-card visible" data-cat="C">
-        <div class="query-card-head">
-          <div><div class="query-card-title">⚡ Shortest Path (Graph-Only)</div><div class="query-card-sub">Connection path between a citizen and a department — impossible in SQL</div></div>
-          <button class="btn-run" onclick="runQuery('shortest-path',this)">▶ Run</button>
-        </div>
-        <div class="param-row">
-          <label>From (Citizen):</label>
-          <select id="param-shortest-path-from">
-            <option>Ahmed Al-Khalidi</option><option>Fatima Nasser</option><option>Omar Barakat</option><option>Layla Mustafa</option><option>Yusuf Haddad</option>
-          </select>
-          <label>To (Dept):</label>
-          <select id="param-shortest-path-to">
-            <option>Emergency Services</option><option>Sanitation</option><option>Traffic Authority</option><option>Street Lighting</option><option>Public Works</option><option>Water &amp; Utilities</option>
-          </select>
-        </div>
-        <div class="cypher-wrap"><div class="cypher-label">CYPHER</div>
-<div class="cypher"><span class="kw">MATCH</span> path = <span class="fn">shortestPath</span>(
-  (<span class="var">c</span>:Citizen)-[*]-(<span class="var">dept</span>:Department)
-)
-<span class="kw">UNWIND</span> <span class="fn">nodes</span>(path) <span class="kw">AS</span> <span class="var">n</span>
-<span class="kw">RETURN</span> <span class="fn">labels</span>(<span class="var">n</span>)[0], <span class="var">n</span>.name, <span class="var">n</span>.category</div></div>
-        <div class="query-results" id="res-shortest-path"><div class="empty">Click <strong>▶ Run</strong> to execute</div></div>
-      </div>
-
-      <!-- C2: Impact Analysis -->
-      <div class="query-card visible" data-cat="C">
-        <div class="query-card-head">
-          <div><div class="query-card-title">💥 Impact Analysis</div><div class="query-card-sub">If a department shuts down — who is affected?</div></div>
-          <button class="btn-run" onclick="runQuery('impact-analysis',this)">▶ Run</button>
-        </div>
-        <div class="param-row">
-          <label>Department:</label>
-          <select id="param-impact-analysis">
-            <option>Sanitation</option><option>Street Lighting</option><option>Traffic Authority</option><option>Public Works</option><option>Emergency Services</option><option>Water &amp; Utilities</option>
-          </select>
-        </div>
-        <div class="cypher-wrap"><div class="cypher-label">CYPHER</div>
-<div class="cypher"><span class="kw">MATCH</span> (<span class="var">dept</span>:Department)<-[:<span class="fn">ASSIGNED_TO</span>]-(<span class="var">r</span>:ServiceRequest)
-      <-[:<span class="fn">FILED</span>]-(<span class="var">c</span>:Citizen)
-<span class="kw">MATCH</span> (<span class="var">dept</span>)-[:<span class="fn">COVERS</span>]->(<span class="var">d</span>:District)
-<span class="kw">RETURN</span> <span class="fn">COLLECT</span>(<span class="kw">DISTINCT</span> <span class="var">c</span>.name),
-       <span class="fn">COLLECT</span>(<span class="kw">DISTINCT</span> <span class="var">d</span>.name),
-       <span class="fn">COUNT</span>(<span class="kw">DISTINCT</span> <span class="var">r</span>)</div></div>
-        <div class="query-results" id="res-impact-analysis"><div class="empty">Click <strong>▶ Run</strong> to execute</div></div>
-      </div>
-
-      <!-- C3: Collaboration Gaps -->
-      <div class="query-card visible" data-cat="C">
-        <div class="query-card-head">
-          <div><div class="query-card-title">🔍 Collaboration Gaps</div><div class="query-card-sub">Departments that SHOULD collaborate but don't yet — negative pattern matching</div></div>
-          <button class="btn-run" onclick="runQuery('collab-gaps',this)">▶ Run</button>
-        </div>
-        <div class="cypher-wrap"><div class="cypher-label">CYPHER</div>
-<div class="cypher"><span class="kw">MATCH</span> (<span class="var">d1</span>:Department)-[:<span class="fn">COVERS</span>]->(<span class="var">dist</span>:District)
-      <-[:<span class="fn">COVERS</span>]-(<span class="var">d2</span>:Department)
-<span class="kw">WHERE</span> <span class="var">d1</span>.id < <span class="var">d2</span>.id
-  <span class="kw">AND NOT</span> (<span class="var">d1</span>)-[:<span class="fn">COLLABORATES_WITH</span>]-(<span class="var">d2</span>)
-<span class="kw">RETURN</span> <span class="var">d1</span>.name, <span class="var">d2</span>.name,
-       <span class="fn">COLLECT</span>(<span class="var">dist</span>.name), <span class="fn">COUNT</span>(<span class="var">dist</span>)</div></div>
-        <div class="query-results" id="res-collab-gaps"><div class="empty">Click <strong>▶ Run</strong> to execute</div></div>
-      </div>
-
-      <!-- C4: District Connectivity -->
-      <div class="query-card visible" data-cat="C">
-        <div class="query-card-head">
-          <div><div class="query-card-title">🏗️ District Connectivity Score</div><div class="query-card-sub">How connected is each district — departments, citizens, requests</div></div>
-          <button class="btn-run" onclick="runQuery('district-connectivity',this)">▶ Run</button>
-        </div>
-        <div class="cypher-wrap"><div class="cypher-label">CYPHER</div>
-<div class="cypher"><span class="kw">MATCH</span> (<span class="var">d</span>:District)
-<span class="kw">OPTIONAL MATCH</span> (<span class="var">d</span>)<-[:<span class="fn">COVERS</span>]-(<span class="var">dept</span>:Department)
-<span class="kw">OPTIONAL MATCH</span> (<span class="var">d</span>)<-[:<span class="fn">LIVES_IN</span>]-(<span class="var">c</span>:Citizen)
-<span class="kw">OPTIONAL MATCH</span> (<span class="var">d</span>)<-[:<span class="fn">LOCATED_IN</span>]-(<span class="var">r</span>:ServiceRequest)
-<span class="kw">RETURN</span> <span class="var">d</span>.name, <span class="fn">COUNT</span>(<span class="kw">DISTINCT</span> dept),
-       <span class="fn">COUNT</span>(<span class="kw">DISTINCT</span> c), <span class="fn">COUNT</span>(<span class="kw">DISTINCT</span> r)</div></div>
-        <div class="query-results" id="res-district-connectivity"><div class="empty">Click <strong>▶ Run</strong> to execute</div></div>
-      </div>
-
-      <!-- C5: Explore District -->
-      <div class="query-card visible" data-cat="C">
-        <div class="query-card-head">
-          <div><div class="query-card-title">🌐 Variable-Length Path Explorer</div><div class="query-card-sub">All entities within N hops of a district — full ecosystem</div></div>
-          <button class="btn-run" onclick="runQuery('explore-district',this)">▶ Run</button>
-        </div>
-        <div class="param-row">
-          <label>District:</label>
-          <select id="param-explore-district">
-            <option>University Zone</option><option>Old City</option><option>Commercial Center</option><option>Northern Suburbs</option><option>Industrial Area</option><option>Residential East</option><option>Residential West</option><option>Southern Zone</option>
-          </select>
-        </div>
-        <div class="cypher-wrap"><div class="cypher-label">CYPHER</div>
-<div class="cypher"><span class="kw">MATCH</span> path = (<span class="var">d</span>:District)-[*1..3]-(<span class="var">connected</span>)
-<span class="kw">RETURN DISTINCT</span> <span class="fn">labels</span>(<span class="var">connected</span>)[0] <span class="kw">AS</span> type,
-       <span class="var">connected</span>.name, <span class="fn">length</span>(path) <span class="kw">AS</span> distance
-<span class="kw">ORDER BY</span> distance, type</div></div>
-        <div class="query-results" id="res-explore-district"><div class="empty">Click <strong>▶ Run</strong> to execute</div></div>
-      </div>
-
     </div><!-- /query-grid -->
   </main>
 

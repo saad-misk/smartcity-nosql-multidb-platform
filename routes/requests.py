@@ -1,25 +1,20 @@
 """
 Routes — Service Request Submission, Tracking, Status Updates
 This demonstrates the key multi-DB integration flow:
-  Submit → MongoDB (store) + Neo4j (graph edge) + Redis (cache + recent) + Cassandra (event log)
+    Submit → Elasticsearch (similarity) + MongoDB (store) + Neo4j (graph edge) + Redis (cache + recent)
 """
 
+from datetime import datetime
 from flask import Blueprint, request, jsonify
-from db import mongo_client   as mongo
-from db import neo4j_client   as neo4j
-from db import redis_client   as redis_c
-from db import cassandra_client as cass
+from db import mongo_client as mongo
+from db import neo4j_client as neo4j
+from db import redis_client as redis_c
+from db import elasticsearch_client as es
 
 requests_bp = Blueprint("requests", __name__)
 
-DEPT_MAP = {
-    "waste":          "dept_sanitation",
-    "lighting":       "dept_lighting",
-    "traffic":        "dept_traffic",
-    "water":          "dept_utilities",
-    "infrastructure": "dept_public_works",
-    "emergency":      "dept_emergency",
-}
+VALID_STATUSES = ["pending", "assigned", "in_progress", "resolved"]
+PRIORITY_ORDER = ["low", "medium", "high"]
 
 
 def _require_session(req):
@@ -32,6 +27,16 @@ def _require_session(req):
     return token, sess
 
 
+def _boost_priority(priority, similarity_score, threshold=5.0):
+    if similarity_score < threshold:
+        return priority, False
+    if priority not in PRIORITY_ORDER:
+        return priority, False
+    idx = PRIORITY_ORDER.index(priority)
+    boosted = PRIORITY_ORDER[min(idx + 1, len(PRIORITY_ORDER) - 1)]
+    return boosted, boosted != priority
+
+
 # ─────────────────────────────────────────────
 # SUBMIT A REQUEST
 # ─────────────────────────────────────────────
@@ -42,59 +47,98 @@ def submit_request():
     if not sess:
         return jsonify({"error": "Unauthorized — session expired or missing"}), 401
 
-    data = request.json
-    required = ["category", "subcategory", "description", "lat", "lng", "district_id"]
+    data = request.json or {}
+    required = ["category", "subCategory", "description", "lat", "lng", "areaId", "areaName"]
     if not all(k in data for k in required):
         return jsonify({"error": "Missing required fields"}), 400
 
-    citizen_id  = sess["user_id"]
-    category    = data["category"]
-    district_id = data["district_id"]
+    citizen_id = sess.get("citizen_id") or sess.get("user_id")
+    category = data["category"]
+    sub_category = data["subCategory"]
+    area_id = data["areaId"]
+    area_name = data["areaName"]
+    area_description = data.get("areaDescription", "")
+
+    citizen = mongo.get_citizen_by_id(citizen_id)
+    if not citizen:
+        return jsonify({"error": "Citizen not found"}), 404
+
+    base_priority = mongo.get_default_priority(category)
+    similarity_score, similar_hits = es.search_similar_requests(
+        description=data["description"],
+        category=category,
+        sub_category=sub_category,
+        area_name=area_name,
+        limit=3,
+    )
+    priority, boosted = _boost_priority(base_priority, similarity_score)
+    similar_ids = [h["requestId"] for h in similar_hits if h.get("requestId")]
+
+    dept = mongo.get_department_for_category(category) or {}
+    assignment = {
+        "departmentId": dept.get("departmentId"),
+        "departmentName": dept.get("departmentName"),
+        "technicianId": None,
+        "technicianName": None,
+    }
 
     # 1. Store in MongoDB
-    rid = mongo.create_request(
+    rid = mongo.create_service_request(
         citizen_id=citizen_id,
+        citizen_name=citizen.get("name"),
         category=category,
-        subcategory=data["subcategory"],
+        sub_category=sub_category,
         description=data["description"],
+        area_id=area_id,
+        area_name=area_name,
+        area_description=area_description,
         lat=float(data["lat"]),
         lng=float(data["lng"]),
-        district_id=district_id,
-        photo_url=data.get("photo_url")
+        priority=priority,
+        assignment=assignment,
+        photo_urls=data.get("photoUrls") or [],
+        similarity_score=similarity_score,
+        similar_request_ids=similar_ids,
     )
 
-    # 2. Create graph edges in Neo4j
-    dept_id = DEPT_MAP.get(category, "dept_public_works")
-    neo4j.create_request_node(rid, category, "OPEN", citizen_id, dept_id)
+    # 2. Index in Elasticsearch for future similarity checks
+    es.index_request(rid, {
+        "category": category,
+        "subCategory": sub_category,
+        "description": data["description"],
+        "areaName": area_name,
+        "status": "pending",
+        "priority": priority,
+        "createdAt": datetime.utcnow().isoformat(),
+        "citizenName": citizen.get("name"),
+    })
 
-    # 3. Cache status in Redis + push to user recent list
-    redis_c.cache_request_status(rid, "OPEN")
+    # 3. Create graph edges in Neo4j
+    dept_id = assignment.get("departmentId")
+    neo4j.create_request_node(rid, category, "pending", citizen_id, dept_id)
+    neo4j.link_request_to_area(rid, area_id)
+
+    # 4. Cache status in Redis + push to user recent list
+    redis_c.cache_request_status(rid, "pending")
     redis_c.push_recent_request(citizen_id, rid)
 
-    # 4. Invalidate department dashboard cache (data changed)
-    redis_c.invalidate_dept_dashboard(dept_id)
-
-    # 5. Log to Cassandra event log
-    try:
-        cass.log_status_change(
-            request_id=rid, citizen_id=citizen_id,
-            district_id=district_id, category=category,
-            old_status="", new_status="OPEN",
-            actor=citizen_id, comment="Request submitted"
-        )
-    except Exception as e:
-        print(f"⚠️  Cassandra log failed: {e}")
+    # 5. Invalidate department dashboard cache (data changed)
+    if dept_id:
+        redis_c.invalidate_dept_dashboard(dept_id)
 
     # 6. Reward civic score
     mongo.update_civic_score(citizen_id, 1)
-    user = mongo.get_user_by_id(citizen_id)
-    redis_c.update_leaderboard(citizen_id, user.get("civic_score", 1))
+    citizen = mongo.get_citizen_by_id(citizen_id)
+    redis_c.update_leaderboard(citizen_id, citizen.get("civicScore", 1))
 
     return jsonify({
-        "message":    "Request submitted successfully",
+        "message": "Request submitted successfully",
         "request_id": rid,
-        "status":     "OPEN",
-        "assigned_to": dept_id
+        "status": "pending",
+        "priority": priority,
+        "similarity_score": similarity_score,
+        "similarity_boosted": boosted,
+        "assigned_to": dept_id,
     }), 201
 
 
@@ -128,7 +172,8 @@ def my_requests():
     if not sess:
         return jsonify({"error": "Unauthorized"}), 401
 
-    reqs = mongo.get_requests_by_citizen(sess["user_id"])
+    citizen_id = sess.get("citizen_id") or sess.get("user_id")
+    reqs = mongo.get_requests_by_citizen(citizen_id)
     return jsonify({"requests": reqs, "count": len(reqs)}), 200
 
 
@@ -138,48 +183,41 @@ def my_requests():
 
 @requests_bp.route("/api/requests/<request_id>/status", methods=["PATCH"])
 def update_status(request_id):
-    data = request.json
-    if not data or "status" not in data:
+    data = request.json or {}
+    if "status" not in data:
         return jsonify({"error": "New status required"}), 400
 
     new_status = data["status"]
-    actor      = data.get("actor", "system")
-    comment    = data.get("comment", "")
+    if new_status not in VALID_STATUSES:
+        return jsonify({"error": "Invalid status"}), 400
 
     req = mongo.get_request_by_id(request_id)
     if not req:
         return jsonify({"error": "Request not found"}), 404
 
-    old_status = req["status"]
+    assignment = req.get("assignment", {})
+    assignment_update = {
+        "departmentId": data.get("departmentId", assignment.get("departmentId")),
+        "departmentName": data.get("departmentName", assignment.get("departmentName")),
+        "technicianId": data.get("technicianId", assignment.get("technicianId")),
+        "technicianName": data.get("technicianName", assignment.get("technicianName")),
+    }
 
     # 1. Update MongoDB
-    mongo.update_request_status(request_id, new_status, actor, comment)
+    mongo.update_request_status(request_id, new_status, assignment_update)
 
     # 2. Invalidate Redis cache, then re-cache new status
     redis_c.invalidate_request_status(request_id)
     redis_c.cache_request_status(request_id, new_status)
 
     # 3. Invalidate dept dashboard
-    redis_c.invalidate_dept_dashboard(req.get("assigned_dept", ""))
+    dept_id = assignment_update.get("departmentId")
+    if dept_id:
+        redis_c.invalidate_dept_dashboard(dept_id)
 
     # 4. If resolved — update Neo4j graph
-    if new_status == "RESOLVED" and actor.startswith("tech_"):
-        neo4j.mark_request_resolved(request_id, actor)
-
-    # 5. Log to Cassandra
-    try:
-        cass.log_status_change(
-            request_id=request_id,
-            citizen_id=req["citizen_id"],
-            district_id=req["district_id"],
-            category=req["category"],
-            old_status=old_status,
-            new_status=new_status,
-            actor=actor,
-            comment=comment
-        )
-    except Exception as e:
-        print(f"⚠️  Cassandra log failed: {e}")
+    if new_status == "resolved" and assignment_update.get("technicianId"):
+        neo4j.mark_request_resolved(request_id, assignment_update["technicianId"])
 
     return jsonify({"message": f"Status updated to {new_status}", "cache_invalidated": True}), 200
 
@@ -210,3 +248,30 @@ def nearby_requests():
 def get_categories():
     cats = redis_c.get_category_list()
     return jsonify(cats), 200
+
+
+# ─────────────────────────────────────────────
+# ELASTICSEARCH — SIMILARITY SEARCH
+# ─────────────────────────────────────────────
+
+@requests_bp.route("/api/search/similar", methods=["GET"])
+def search_similar():
+    text = request.args.get("q", "").strip()
+    if not text:
+        return jsonify({"error": "q is required"}), 400
+
+    category = request.args.get("category")
+    sub_category = request.args.get("subCategory")
+    area_name = request.args.get("areaName")
+    score, results = es.search_similar_requests(
+        description=text,
+        category=category,
+        sub_category=sub_category,
+        area_name=area_name,
+        limit=5,
+    )
+    return jsonify({
+        "query": text,
+        "best_score": score,
+        "results": results,
+    }), 200

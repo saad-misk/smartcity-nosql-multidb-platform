@@ -1,18 +1,7 @@
 /* ── Query Map ── */
 const QUERY_MAP = {
-  'shared-districts':     { url: '/api/graph/shared-districts',        key: 'shared_district_coverage', cat: 'B' },
-  'top-technicians':      { url: '/api/graph/top-technicians',         key: 'top_technicians',          cat: 'A' },
-  'dept-technicians':     { url: '/api/graph/department/dept_lighting/technicians', key: 'technicians', cat: 'A' },
-  'cross-district':       { url: '/api/graph/cross-district-reporters', key: 'cross_district_reporters', cat: 'B' },
-  'dept-coverage':        { url: '/api/graph/department-coverage',     key: 'department_coverage',      cat: 'A' },
-  'citizen-journey':      { url: '/api/graph/citizen-journey',         key: 'journey',                  cat: 'A', param: 'name' },
-  'district-workload':    { url: '/api/graph/district-workload',       key: 'district_workload',        cat: 'B' },
-  'dept-efficiency':      { url: '/api/graph/department-efficiency',   key: 'department_efficiency',    cat: 'B' },
-  'shortest-path':        { url: '/api/graph/shortest-path',           key: 'path',                     cat: 'C', params: ['from','to'] },
-  'impact-analysis':      { url: '/api/graph/impact-analysis',         key: 'impact_analysis',          cat: 'C', param: 'department' },
-  'collab-gaps':          { url: '/api/graph/collaboration-gaps',      key: 'collaboration_gaps',       cat: 'C' },
-  'district-connectivity':{ url: '/api/graph/district-connectivity',   key: 'district_connectivity',    cat: 'C' },
-  'explore-district':     { url: '/api/graph/explore-district',        key: 'connected',                cat: 'C', param: 'name' },
+  'dept-coverage':   { url: '/api/graph/department-coverage', key: 'department_coverage', cat: 'A' },
+  'top-technicians': { url: '/api/graph/top-technicians',      key: 'top_technicians',     cat: 'A' },
 };
 
 /* ── Category Filter ── */
@@ -101,7 +90,7 @@ async function loadStats() {
   const data = await res.json();
   const nodes = data.nodes || {};
   const rels = data.relationships || 0;
-  const colorMap = { Citizen:'#059669', Department:'#1d4ed8', District:'#d97706', Technician:'#7c3aed', ServiceRequest:'#dc2626' };
+  const colorMap = { Citizen:'#059669', Department:'#1d4ed8', Area:'#d97706', Technician:'#7c3aed', ServiceRequest:'#dc2626' };
   const pills = Object.entries(nodes).map(([label, count]) =>
     '<div class="stat-card"><div class="stat-val" style="color:' + (colorMap[label]||'var(--primary)') + '">' + count + '</div><div class="stat-lbl">' + label + 's</div></div>'
   ).join('');

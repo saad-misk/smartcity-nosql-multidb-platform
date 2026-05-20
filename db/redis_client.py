@@ -1,34 +1,42 @@
 """
-Redis Client — Sessions, Caching, Dashboard Counters
-Member responsible: Ahmad
+Redis Client — SmartCity
+Handles: Sessions, request-status cache, department dashboard cache,
+         user recent-activity list, category tree, civic-score leaderboard.
 
-Cache key patterns:
-  session:{token}              → user_id + role          TTL: 30 min
-  req:status:{req_id}          → status string           TTL: 60 sec
-  dashboard:dept:{dept_id}     → JSON summary            TTL: 5 min
-  hotspot:district:{zone_id}   → top issue locations     TTL: 10 min
-  user:recent:{user_id}        → list of last 5 req IDs  TTL: 1 hour
-  category:list                → full category tree      TTL: 24 hours
+Key patterns:
+  session:{token}          → user payload JSON      TTL: 30 min
+  req:status:{req_id}      → status string          TTL:  1 min
+  dashboard:dept:{dept_id} → summary JSON           TTL:  5 min
+  user:recent:{user_id}    → list of last-5 req IDs TTL:  1 hour
+  category:list            → full category JSON      TTL: 24 hours
+  leaderboard:civic_score  → sorted set (score)      no TTL
 """
 
-import os
-import json
-import uuid
+import os, json, uuid
 import redis
 
-# TTLs in seconds
-TTL_SESSION         = 1800    # 30 min
-TTL_REQ_STATUS      = 60      # 1 min
-TTL_DEPT_DASHBOARD  = 300     # 5 min
-TTL_HOTSPOT         = 600     # 10 min
-TTL_USER_RECENT     = 3600    # 1 hour
-TTL_CATEGORY_LIST   = 86400   # 24 hours
+TTL_SESSION    = 1800   # 30 min
+TTL_STATUS     = 60     # 1 min
+TTL_DASHBOARD  = 300    # 5 min
+TTL_RECENT     = 3600   # 1 hour
+TTL_CATEGORIES = 86400  # 24 hours
+
+CATEGORY_TREE = {
+    "waste":          ["Overflowing Bin", "Illegal Dumping", "Blocked Drainage"],
+    "lighting":       ["Broken Lamp Post", "Unlit Zone", "Flickering Light"],
+    "traffic":        ["Pothole", "Road Closure", "Signal Failure"],
+    "infrastructure": ["Broken Bench", "Damaged Sidewalk", "Graffiti"],
+    "water":          ["Water Leak", "Sewage Issue"],
+    "emergency":      ["Flooding", "Fire", "Public Hazard"],
+}
 
 
 def get_redis():
-    host = os.getenv("REDIS_HOST", "localhost")
-    port = int(os.getenv("REDIS_PORT", 6379))
-    return redis.Redis(host=host, port=port, decode_responses=True)
+    return redis.Redis(
+        host=os.getenv("REDIS_HOST", "localhost"),
+        port=int(os.getenv("REDIS_PORT", 6379)),
+        decode_responses=True,
+    )
 
 
 def ping():
@@ -39,21 +47,21 @@ def ping():
         return False
 
 
-# ─────────────────────────────────────────────
-# SESSION MANAGEMENT
-# ─────────────────────────────────────────────
+# ── Sessions ──────────────────────────────────────────────────────────────────
 
-def create_session(user_id, role="citizen"):
-    """Create a new session token and store in Redis."""
+def create_session(user_id, role="citizen", citizen_id=None,
+                   technician_id=None, username=None):
     r = get_redis()
     token = str(uuid.uuid4())
-    payload = json.dumps({"user_id": user_id, "role": role})
-    r.setex(f"session:{token}", TTL_SESSION, payload)
+    payload = {"user_id": user_id, "role": role}
+    if citizen_id:    payload["citizen_id"]    = citizen_id
+    if technician_id: payload["technician_id"] = technician_id
+    if username:      payload["username"]       = username
+    r.setex(f"session:{token}", TTL_SESSION, json.dumps(payload))
     return token
 
 
 def get_session(token):
-    """Return session data dict or None if expired/missing."""
     r = get_redis()
     data = r.get(f"session:{token}")
     if data:
@@ -63,136 +71,82 @@ def get_session(token):
 
 
 def delete_session(token):
-    """Logout — delete the session key."""
-    r = get_redis()
-    r.delete(f"session:{token}")
+    get_redis().delete(f"session:{token}")
 
 
-# ─────────────────────────────────────────────
-# REQUEST STATUS CACHE
-# ─────────────────────────────────────────────
+# ── Request-status cache ──────────────────────────────────────────────────────
 
-def cache_request_status(request_id, status):
-    r = get_redis()
-    r.setex(f"req:status:{request_id}", TTL_REQ_STATUS, status)
+def cache_request_status(req_id, status):
+    get_redis().setex(f"req:status:{req_id}", TTL_STATUS, status)
 
 
-def get_cached_status(request_id):
-    r = get_redis()
-    return r.get(f"req:status:{request_id}")
+def get_cached_status(req_id):
+    return get_redis().get(f"req:status:{req_id}")
 
 
-def invalidate_request_status(request_id):
-    """Call this whenever a request status changes in MongoDB."""
-    r = get_redis()
-    r.delete(f"req:status:{request_id}")
+def invalidate_request_status(req_id):
+    get_redis().delete(f"req:status:{req_id}")
 
 
-# ─────────────────────────────────────────────
-# DEPARTMENT DASHBOARD COUNTERS
-# ─────────────────────────────────────────────
+# ── Department dashboard cache ────────────────────────────────────────────────
 
-def cache_dept_dashboard(dept_id, summary_dict):
-    r = get_redis()
-    r.setex(f"dashboard:dept:{dept_id}", TTL_DEPT_DASHBOARD, json.dumps(summary_dict))
+def cache_dept_dashboard(dept_id, summary):
+    get_redis().setex(f"dashboard:dept:{dept_id}", TTL_DASHBOARD, json.dumps(summary))
 
 
 def get_dept_dashboard(dept_id):
-    r = get_redis()
-    data = r.get(f"dashboard:dept:{dept_id}")
+    data = get_redis().get(f"dashboard:dept:{dept_id}")
     return json.loads(data) if data else None
 
 
 def invalidate_dept_dashboard(dept_id):
-    r = get_redis()
-    r.delete(f"dashboard:dept:{dept_id}")
+    get_redis().delete(f"dashboard:dept:{dept_id}")
 
 
-# ─────────────────────────────────────────────
-# HOTSPOT CACHE (per district)
-# ─────────────────────────────────────────────
+# ── User recent requests (capped list of 5) ───────────────────────────────────
 
-def cache_hotspot(district_id, locations_list):
-    r = get_redis()
-    r.setex(f"hotspot:district:{district_id}", TTL_HOTSPOT, json.dumps(locations_list))
-
-
-def get_hotspot(district_id):
-    r = get_redis()
-    data = r.get(f"hotspot:district:{district_id}")
-    return json.loads(data) if data else None
-
-
-# ─────────────────────────────────────────────
-# USER RECENT ACTIVITY (list)
-# ─────────────────────────────────────────────
-
-def push_recent_request(user_id, request_id):
-    """Keep a capped list of last 5 request IDs for a user."""
+def push_recent_request(user_id, req_id):
     r = get_redis()
     key = f"user:recent:{user_id}"
-    r.lpush(key, request_id)
-    r.ltrim(key, 0, 4)       # keep only latest 5
-    r.expire(key, TTL_USER_RECENT)
+    r.lpush(key, req_id)
+    r.ltrim(key, 0, 4)          # keep only latest 5
+    r.expire(key, TTL_RECENT)
 
 
 def get_recent_requests(user_id):
-    r = get_redis()
-    return r.lrange(f"user:recent:{user_id}", 0, -1)
+    return get_redis().lrange(f"user:recent:{user_id}", 0, -1)
 
 
-# ─────────────────────────────────────────────
-# CATEGORY LIST (rarely changes)
-# ─────────────────────────────────────────────
-
-CATEGORY_TREE = {
-    "waste":        ["Overflowing Bin", "Illegal Dumping", "Blocked Drainage"],
-    "lighting":     ["Broken Lamp Post", "Unlit Zone", "Flickering Light"],
-    "traffic":      ["Pothole", "Road Closure", "Signal Failure", "Congestion"],
-    "infrastructure": ["Broken Bench", "Damaged Sidewalk", "Graffiti"],
-    "water":        ["Water Leak", "Sewage Issue"],
-    "emergency":    ["Flooding", "Fire", "Public Hazard"],
-}
-
+# ── Category tree (rarely changes) ───────────────────────────────────────────
 
 def get_category_list():
     r = get_redis()
     cached = r.get("category:list")
     if cached:
         return json.loads(cached)
-    # Warm the cache
-    r.setex("category:list", TTL_CATEGORY_LIST, json.dumps(CATEGORY_TREE))
+    r.setex("category:list", TTL_CATEGORIES, json.dumps(CATEGORY_TREE))
     return CATEGORY_TREE
 
 
-# ─────────────────────────────────────────────
-# SORTED SET — LEADERBOARD (Civic Score)
-# ─────────────────────────────────────────────
+# ── Civic-score leaderboard (sorted set) ─────────────────────────────────────
 
 def update_leaderboard(user_id, score):
-    r = get_redis()
-    r.zadd("leaderboard:civic_score", {user_id: score})
+    get_redis().zadd("leaderboard:civic_score", {user_id: score})
 
 
 def get_top_citizens(limit=10):
+    return get_redis().zrevrange(
+        "leaderboard:civic_score", 0, limit - 1, withscores=True
+    )
+
+
+# ── Health info ───────────────────────────────────────────────────────────────
+
+def get_info():
     r = get_redis()
-    return r.zrevrange("leaderboard:civic_score", 0, limit - 1, withscores=True)
-
-
-# ─────────────────────────────────────────────
-# DEBUG HELPERS
-# ─────────────────────────────────────────────
-
-def get_all_cache_keys():
-    r = get_redis()
-    return r.keys("*")
-
-
-def get_redis_info():
-    r = get_redis()
-    info = r.info("memory")
+    mem = r.info("memory")
     return {
-        "used_memory_human": info.get("used_memory_human"),
-        "total_keys":        r.dbsize(),
-        "connected":         True
+        "used_memory_human": mem.get("used_memory_human"),
+        "total_keys": r.dbsize(),
+        "connected": True,
     }

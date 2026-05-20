@@ -68,6 +68,12 @@ def health():
     except Exception:
         status["neo4j"] = "unavailable"
 
+    try:
+        from db import elasticsearch_client as es
+        status["elasticsearch"] = "ok" if es.get_client().ping() else "unavailable"
+    except Exception:
+        status["elasticsearch"] = "unavailable"
+
     return {"status": status}, 200
 
 

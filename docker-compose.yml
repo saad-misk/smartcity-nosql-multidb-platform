@@ -34,22 +34,19 @@ services:
     networks:
       - smartcity_net
 
-  cassandra:
-    image: cassandra:4.1
-    container_name: smartcity_cassandra
+  elasticsearch:
+    image: elasticsearch:8.13.4
+    container_name: smartcity_elasticsearch
     ports:
-      - "9042:9042"
+      - "9200:9200"
     environment:
-      CASSANDRA_CLUSTER_NAME: SmartCityCluster
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
     volumes:
-      - cassandra_data:/var/lib/cassandra
+      - elastic_data:/usr/share/elasticsearch/data
     networks:
       - smartcity_net
-    healthcheck:
-      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
-      interval: 30s
-      timeout: 10s
-      retries: 10
 
   app:
     build: .
@@ -63,12 +60,12 @@ services:
       NEO4J_PASSWORD: smartcity123
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      CASSANDRA_HOST: cassandra
+      ELASTICSEARCH_URL: http://elasticsearch:9200
     depends_on:
       - mongodb
       - neo4j
       - redis
-      - cassandra
+      - elasticsearch
     networks:
       - smartcity_net
     volumes:
@@ -77,7 +74,7 @@ services:
 volumes:
   mongo_data:
   neo4j_data:
-  cassandra_data:
+  elastic_data:
 
 networks:
   smartcity_net:

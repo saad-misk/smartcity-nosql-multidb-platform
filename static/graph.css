@@ -109,6 +109,6 @@ tr:last-child td{border:none}
 .path-arrow{padding:0 6px;color:var(--text-lt);font-size:1.1rem;font-weight:700}
 .path-node.Citizen{background:#d1fae5;border-color:#059669;color:#065f46}
 .path-node.Department{background:#dbeafe;border-color:#1d4ed8;color:#1e3a8a}
-.path-node.District{background:#fef3c7;border-color:#d97706;color:#92400e}
+.path-node.Area{background:#fef3c7;border-color:#d97706;color:#92400e}
 .path-node.Technician{background:#ede9fe;border-color:#7c3aed;color:#5b21b6}
 .path-node.ServiceRequest{background:#fee2e2;border-color:#dc2626;color:#991b1b}

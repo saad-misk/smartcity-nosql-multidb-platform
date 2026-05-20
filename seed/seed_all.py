@@ -4,155 +4,224 @@ Run: python seed/seed_all.py
 """
 
 import sys, os
+from datetime import datetime
+from werkzeug.security import generate_password_hash
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from db import mongo_client as mongo
 from db import neo4j_client as neo4j
 from db import redis_client as redis_c
-from db import cassandra_client as cass
+from db import elasticsearch_client as es
 
 
-# ─── Sample Citizens ────────────────────────────────────────────────────────
-CITIZENS = [
-    {"name": "Ahmed Al-Khalidi",  "email": "ahmed@example.com",  "national_id": "9001001", "phone": "0591234567", "district": "dist_3", "lat": 31.902, "lng": 35.203},
-    {"name": "Fatima Nasser",     "email": "fatima@example.com", "national_id": "9001002", "phone": "0592345678", "district": "dist_1", "lat": 31.895, "lng": 35.197},
-    {"name": "Omar Barakat",      "email": "omar@example.com",   "national_id": "9001003", "phone": "0593456789", "district": "dist_2", "lat": 31.910, "lng": 35.210},
-    {"name": "Layla Mustafa",     "email": "layla@example.com",  "national_id": "9001004", "phone": "0594567890", "district": "dist_4", "lat": 31.925, "lng": 35.220},
-    {"name": "Yusuf Haddad",      "email": "yusuf@example.com",  "national_id": "9001005", "phone": "0595678901", "district": "dist_5", "lat": 31.880, "lng": 35.185},
+AREAS = [
+    {"id": "dist_1", "name": "Old City", "population": 120000},
+    {"id": "dist_2", "name": "Commercial Center", "population": 95000},
+    {"id": "dist_3", "name": "University Zone", "population": 78000},
+    {"id": "dist_4", "name": "Northern Suburbs", "population": 110000},
+    {"id": "dist_5", "name": "Industrial Area", "population": 64000},
+    {"id": "dist_6", "name": "Residential East", "population": 105000},
+    {"id": "dist_7", "name": "Residential West", "population": 97000},
+    {"id": "dist_8", "name": "Southern Zone", "population": 88000},
 ]
 
-# ─── Sample Requests ────────────────────────────────────────────────────────
+DEPARTMENTS = [
+    {"id": "dept_public_works", "name": "Public Works", "categories": ["infrastructure", "traffic"]},
+    {"id": "dept_traffic", "name": "Traffic Authority", "categories": ["traffic"]},
+    {"id": "dept_sanitation", "name": "Sanitation", "categories": ["waste"]},
+    {"id": "dept_lighting", "name": "Street Lighting", "categories": ["lighting"]},
+    {"id": "dept_emergency", "name": "Emergency Services", "categories": ["emergency"]},
+    {"id": "dept_utilities", "name": "Water & Utilities", "categories": ["water"]},
+]
+
+TECHNICIANS = [
+    {"id": "tech_1", "name": "Khaled Hassan",  "dept": "dept_lighting"},
+    {"id": "tech_2", "name": "Omar Nasser",    "dept": "dept_sanitation"},
+    {"id": "tech_3", "name": "Yusuf Kareem",   "dept": "dept_traffic"},
+    {"id": "tech_4", "name": "Bilal Mansour",  "dept": "dept_public_works"},
+    {"id": "tech_5", "name": "Tariq Saleh",    "dept": "dept_utilities"},
+]
+
+CATEGORIES = {
+    "waste":        {"default": "medium", "subs": ["Overflowing Bin", "Illegal Dumping", "Blocked Drainage"]},
+    "lighting":     {"default": "medium", "subs": ["Broken Lamp Post", "Unlit Zone", "Flickering Light"]},
+    "traffic":      {"default": "medium", "subs": ["Pothole", "Road Closure", "Signal Failure", "Congestion"]},
+    "infrastructure": {"default": "medium", "subs": ["Broken Bench", "Damaged Sidewalk", "Graffiti"]},
+    "water":        {"default": "high", "subs": ["Water Leak", "Sewage Issue"]},
+    "emergency":    {"default": "high", "subs": ["Flooding", "Fire", "Public Hazard"]},
+}
+
+CITIZENS = [
+    {"name": "Ahmed Al-Khalidi",  "email": "ahmed@example.com",  "national_id": "9001001", "phone": "0591234567", "area": "dist_3"},
+    {"name": "Fatima Nasser",     "email": "fatima@example.com", "national_id": "9001002", "phone": "0592345678", "area": "dist_1"},
+    {"name": "Omar Barakat",      "email": "omar@example.com",   "national_id": "9001003", "phone": "0593456789", "area": "dist_2"},
+    {"name": "Layla Mustafa",     "email": "layla@example.com",  "national_id": "9001004", "phone": "0594567890", "area": "dist_4"},
+    {"name": "Yusuf Haddad",      "email": "yusuf@example.com",  "national_id": "9001005", "phone": "0595678901", "area": "dist_5"},
+]
+
 REQUESTS = [
-    {"category": "lighting",     "sub": "Broken Lamp Post",  "desc": "Lamp post on Al-Najah Street is out for 3 nights", "lat": 31.901, "lng": 35.202, "district": "dist_3", "citizen_idx": 0},
-    {"category": "waste",        "sub": "Overflowing Bin",   "desc": "Garbage bin near central market is overflowing",    "lat": 31.894, "lng": 35.196, "district": "dist_1", "citizen_idx": 1},
-    {"category": "traffic",      "sub": "Pothole",           "desc": "Deep pothole on main road causing accidents",        "lat": 31.909, "lng": 35.209, "district": "dist_2", "citizen_idx": 2},
-    {"category": "water",        "sub": "Water Leak",        "desc": "Water pipe leaking near the roundabout",            "lat": 31.924, "lng": 35.219, "district": "dist_4", "citizen_idx": 3},
-    {"category": "infrastructure","sub": "Broken Bench",     "desc": "Park bench is broken and dangerous",                "lat": 31.879, "lng": 35.184, "district": "dist_5", "citizen_idx": 4},
-    {"category": "waste",        "sub": "Illegal Dumping",   "desc": "Large pile of illegal waste dumped on side road",   "lat": 31.900, "lng": 35.200, "district": "dist_3", "citizen_idx": 0},
-    {"category": "lighting",     "sub": "Unlit Zone",        "desc": "Entire street section has no lighting at night",    "lat": 31.893, "lng": 35.195, "district": "dist_1", "citizen_idx": 1},
-    {"category": "traffic",      "sub": "Signal Failure",    "desc": "Traffic lights at main junction are not working",   "lat": 31.912, "lng": 35.212, "district": "dist_2", "citizen_idx": 2},
+    {"category": "lighting", "sub": "Broken Lamp Post", "desc": "Lamp post on Al-Najah Street is out for 3 nights", "lat": 31.901, "lng": 35.202, "area": "dist_3", "citizen_idx": 0},
+    {"category": "waste", "sub": "Overflowing Bin", "desc": "Garbage bin near central market is overflowing", "lat": 31.894, "lng": 35.196, "area": "dist_1", "citizen_idx": 1},
+    {"category": "traffic", "sub": "Pothole", "desc": "Deep pothole on main road causing accidents", "lat": 31.909, "lng": 35.209, "area": "dist_2", "citizen_idx": 2},
+    {"category": "water", "sub": "Water Leak", "desc": "Water pipe leaking near the roundabout", "lat": 31.924, "lng": 35.219, "area": "dist_4", "citizen_idx": 3},
+    {"category": "infrastructure", "sub": "Broken Bench", "desc": "Park bench is broken and dangerous", "lat": 31.879, "lng": 35.184, "area": "dist_5", "citizen_idx": 4},
+    {"category": "waste", "sub": "Illegal Dumping", "desc": "Large pile of illegal waste dumped on side road", "lat": 31.900, "lng": 35.200, "area": "dist_3", "citizen_idx": 0},
+    {"category": "lighting", "sub": "Unlit Zone", "desc": "Entire street section has no lighting at night", "lat": 31.893, "lng": 35.195, "area": "dist_1", "citizen_idx": 1},
+    {"category": "traffic", "sub": "Signal Failure", "desc": "Traffic lights at main junction are not working", "lat": 31.912, "lng": 35.212, "area": "dist_2", "citizen_idx": 2},
 ]
 
 
 def seed_all():
-    print("\n🌱 Seeding all databases...\n")
+    print("\nSeeding all databases...\n")
 
     # 1. Init schemas
     mongo.init_mongo()
     neo4j.init_neo4j()
     neo4j.seed_static_nodes()
 
-    try:
-        cass.init_cassandra()
-    except Exception as e:
-        print(f"⚠️  Cassandra init skipped (may not be ready): {e}")
+    # 2. Reference data (Mongo)
+    for area in AREAS:
+        mongo.upsert_area(area["id"], area["name"], population=area.get("population"))
 
-    # 2. Seed citizens
+    for dept in DEPARTMENTS:
+        mongo.upsert_department(
+            dept_id=dept["id"],
+            name=dept["name"],
+            contact_email=f"{dept['id']}@smartcity.local",
+            contact_phone="+970-000-0000",
+            service_categories=dept["categories"],
+            areas=[a["id"] for a in AREAS],
+        )
+
+    for name, cfg in CATEGORIES.items():
+        mongo.upsert_category(name, cfg["default"], cfg["subs"])
+
+    for tech in TECHNICIANS:
+        dept = next((d for d in DEPARTMENTS if d["id"] == tech["dept"]), None)
+        mongo.upsert_technician(
+            tech_id=tech["id"],
+            name=tech["name"],
+            department_id=tech["dept"],
+            department_name=dept["name"] if dept else "",
+        )
+
+    # 3. Seed citizens + users
     citizen_ids = []
     for c in CITIZENS:
-        uid = mongo.create_user(
-            name=c["name"], email=c["email"],
-            national_id=c["national_id"], phone=c["phone"],
-            district_id=c["district"], lat=c["lat"], lng=c["lng"]
+        area = next(a for a in AREAS if a["id"] == c["area"])
+        citizen_id = mongo.create_citizen(
+            national_id=c["national_id"],
+            name=c["name"],
+            email=c["email"],
+            phone=c["phone"],
+            area_id=area["id"],
+            area_name=area["name"],
         )
-        if uid is None:
-            # Already exists — fetch it
-            existing = mongo.get_user_by_email(c["email"])
-            uid = existing["_id"]
+        if citizen_id is None:
+            existing = mongo.get_citizen_by_email(c["email"])
+            citizen_id = existing["_id"]
 
-        citizen_ids.append(uid)
+        user_id = mongo.create_user(
+            username=c["name"],
+            email=c["email"],
+            password_hash=generate_password_hash("demo"),
+            role="citizen",
+            citizen_id=citizen_id,
+        )
+        if user_id is None:
+            user = mongo.get_user_by_email(c["email"])
+            user_id = user["_id"] if user else None
 
-        # Create Neo4j citizen node
-        neo4j.create_citizen_node(uid, c["name"], c["district"])
+        citizen_ids.append(citizen_id)
 
-        # Warm Redis leaderboard
-        redis_c.update_leaderboard(uid, 0)
+        neo4j.create_citizen_node(citizen_id, c["name"], area["id"])
+        redis_c.update_leaderboard(citizen_id, 0)
 
-        print(f"  👤 Citizen: {c['name']} → {uid}")
+        print(f"  Citizen: {c['name']} -> {citizen_id}")
 
-    # 3. Seed requests
+    # 4. Seed requests
     request_ids = []
     for req in REQUESTS:
         cid = citizen_ids[req["citizen_idx"]]
-        rid = mongo.create_request(
+        citizen = mongo.get_citizen_by_id(cid)
+        area = next(a for a in AREAS if a["id"] == req["area"])
+
+        dept = mongo.get_department_for_category(req["category"]) or {}
+        assignment = {
+            "departmentId": dept.get("departmentId"),
+            "departmentName": dept.get("departmentName"),
+            "technicianId": None,
+            "technicianName": None,
+        }
+        priority = mongo.get_default_priority(req["category"])
+
+        rid = mongo.create_service_request(
             citizen_id=cid,
+            citizen_name=citizen.get("name"),
             category=req["category"],
-            subcategory=req["sub"],
+            sub_category=req["sub"],
             description=req["desc"],
-            lat=req["lat"], lng=req["lng"],
-            district_id=req["district"]
+            area_id=area["id"],
+            area_name=area["name"],
+            area_description="",
+            lat=req["lat"],
+            lng=req["lng"],
+            priority=priority,
+            assignment=assignment,
         )
         request_ids.append(rid)
 
-        # MongoDB dept mapping
-        dept_map = {
-            "waste": "dept_sanitation", "lighting": "dept_lighting",
-            "traffic": "dept_traffic",  "water": "dept_utilities",
-            "infrastructure": "dept_public_works", "emergency": "dept_emergency"
-        }
-        dept_id = dept_map.get(req["category"], "dept_public_works")
+        es.index_request(rid, {
+            "category": req["category"],
+            "subCategory": req["sub"],
+            "description": req["desc"],
+            "areaName": area["name"],
+            "status": "pending",
+            "priority": priority,
+            "createdAt": datetime.utcnow().isoformat(),
+            "citizenName": citizen.get("name"),
+        })
 
-        # Neo4j request node + edges
-        neo4j.create_request_node(rid, req["category"], "OPEN", cid, dept_id)
-        neo4j.link_request_to_district(rid, req["district"])
+        neo4j.create_request_node(rid, req["category"], "pending", cid, assignment.get("departmentId"))
+        neo4j.link_request_to_area(rid, area["id"])
 
-        # Redis — cache status + push to user recent
-        redis_c.cache_request_status(rid, "OPEN")
+        redis_c.cache_request_status(rid, "pending")
         redis_c.push_recent_request(cid, rid)
 
-        # Cassandra event log
-        try:
-            cass.log_status_change(
-                request_id=rid, citizen_id=cid,
-                district_id=req["district"], category=req["category"],
-                old_status="", new_status="OPEN", actor=cid,
-                comment="Request submitted"
-            )
-        except Exception:
-            pass
+        print(f"  Request: [{req['category']}] {req['sub']} -> {rid}")
 
-        print(f"  📋 Request: [{req['category']}] {req['sub']} → {rid}")
-
-    # 4. Simulate resolutions
-    if request_ids:
-        rid = request_ids[0]
-        cid = citizen_ids[0]
-        mongo.update_request_status(rid, "RESOLVED", "tech_1", "Lamp replaced successfully")
-        neo4j.mark_request_resolved(rid, "tech_1")
-        redis_c.invalidate_request_status(rid)
-        redis_c.cache_request_status(rid, "RESOLVED")
-        mongo.update_civic_score(cid, 5)
-        redis_c.update_leaderboard(cid, 5)
-        print(f"\n  ✅ Simulated resolution for request {rid}")
-
-    # Simulate more resolutions for richer graph queries
+    # 5. Simulate resolutions
     extra_resolutions = [
-        (1, "tech_2"),  # request index 1 resolved by tech_2
-        (2, "tech_3"),  # request index 2 resolved by tech_3
-        (4, "tech_4"),  # request index 4 resolved by tech_4
-        (6, "tech_1"),  # request index 6 resolved by tech_1 (2nd for tech_1)
+        (0, "tech_1"),
+        (1, "tech_2"),
+        (2, "tech_3"),
+        (4, "tech_4"),
     ]
     for idx, tech in extra_resolutions:
         if idx < len(request_ids):
             rid = request_ids[idx]
-            cid = citizen_ids[min(idx, len(citizen_ids) - 1)]
-            try:
-                mongo.update_request_status(rid, "RESOLVED", tech, "Issue resolved")
-            except Exception:
-                pass
-            neo4j.mark_request_resolved(rid, tech)
+            tech_doc = next((t for t in TECHNICIANS if t["id"] == tech), None)
+            dept = next((d for d in DEPARTMENTS if d["id"] == tech_doc["dept"]), None) if tech_doc else None
+            assignment_update = {
+                "departmentId": dept["id"] if dept else None,
+                "departmentName": dept["name"] if dept else None,
+                "technicianId": tech_doc["id"] if tech_doc else None,
+                "technicianName": tech_doc["name"] if tech_doc else None,
+            }
+            mongo.update_request_status(rid, "resolved", assignment_update)
+            if tech_doc:
+                neo4j.mark_request_resolved(rid, tech_doc["id"])
             redis_c.invalidate_request_status(rid)
-            redis_c.cache_request_status(rid, "RESOLVED")
-            print(f"  ✅ Simulated resolution: request {rid} by {tech}")
+            redis_c.cache_request_status(rid, "resolved")
+            print(f"  Resolved: request {rid} by {tech}")
 
-    # Warm category cache
     redis_c.get_category_list()
 
-    print("\n✅ All databases seeded successfully!\n")
-    print("  MongoDB  → users, requests")
-    print("  Neo4j    → citizen/dept/district nodes + edges")
-    print("  Redis    → sessions, status cache, leaderboard")
-    print("  Cassandra→ event_log\n")
+    print("\nAll databases seeded successfully.\n")
+    print("  MongoDB      -> users, citizens, service_requests, reference data")
+    print("  Neo4j        -> citizen/dept/area graph")
+    print("  Redis        -> sessions, status cache, leaderboard")
+    print("  Elasticsearch-> similarity index\n")
 
 
 if __name__ == "__main__":

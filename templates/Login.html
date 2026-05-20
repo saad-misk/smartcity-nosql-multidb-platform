@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SmartCity — Sign In</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2d3a;
+      --text: #e8eaf0;
+      --text-dim: #6b7080;
+      --accent: #4f8ef7;
+      --accent-dim: rgba(79,142,247,.12);
+      --green: #34d399;
+      --green-dim: rgba(52,211,153,.12);
+      --red: #f87171;
+      --red-dim: rgba(248,113,113,.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .wrap { width: 100%; max-width: 420px; }
+    .brand {
+      text-align: center; margin-bottom: 36px;
+    }
+    .brand-icon {
+      width: 52px; height: 52px;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      border-radius: 14px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; margin-bottom: 14px;
+    }
+    .brand h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.3px; }
+    .brand p { font-size: 0.82rem; color: var(--text-dim); margin-top: 4px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: grid; grid-template-columns: 1fr 1fr;
+      background: var(--bg); border-radius: 10px; padding: 4px;
+      margin-bottom: 24px;
+    }
+    .tab {
+      padding: 9px; border-radius: 7px; border: none;
+      font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; color: var(--text-dim); background: transparent;
+      transition: all .2s;
+    }
+    .tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* Form */
+    .field { margin-bottom: 16px; }
+    label { display: block; font-size: 0.77rem; font-weight: 600; color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    input, select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 13px;
+      border-radius: 9px;
+      font-size: 0.9rem;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      transition: border-color .2s;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    input::placeholder { color: var(--text-dim); }
+    select option { background: var(--surface); }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .role-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;
+    }
+    .role-btn {
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      border-radius: 10px; padding: 12px 6px;
+      cursor: pointer; text-align: center;
+      transition: all .2s; display: flex; flex-direction: column; align-items: center; gap: 5px;
+    }
+    .role-btn:hover { border-color: var(--accent); background: var(--accent-dim); }
+    .role-btn.sel { border-color: var(--accent); background: var(--accent-dim); }
+    .role-btn .icon { font-size: 1.3rem; }
+    .role-btn .lbl { font-size: 0.72rem; font-weight: 600; color: var(--text-dim); }
+    .role-btn.sel .lbl { color: var(--accent); }
+    input[type=hidden] {}
+
+    .btn {
+      width: 100%; padding: 11px; border-radius: 10px; border: none;
+      font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 700;
+      cursor: pointer; transition: all .2s; margin-top: 4px;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { filter: brightness(1.1); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    .msg {
+      margin-top: 12px; padding: 10px 14px; border-radius: 8px;
+      font-size: 0.83rem; font-weight: 500; display: none;
+    }
+    .msg.ok { display: block; background: var(--green-dim); color: var(--green); border: 1px solid rgba(52,211,153,.2); }
+    .msg.err { display: block; background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,113,113,.2); }
+
+    .hint { text-align: center; font-size: 0.75rem; color: var(--text-dim); margin-top: 16px; }
+    .hint a { color: var(--accent); text-decoration: none; }
+    .hint a:hover { text-decoration: underline; }
+
+    /* Demo logins */
+    .demo-section { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
+    .demo-label { font-size: 0.72rem; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+    .demo-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+    .demo-pill {
+      padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border);
+      background: var(--bg); font-size: 0.75rem; font-weight: 600;
+      cursor: pointer; color: var(--text-dim); transition: all .15s; font-family: 'DM Mono', monospace;
+    }
+    .demo-pill:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-icon">🏙️</div>
+    <h1>SmartCity Platform</h1>
+    <p>Urban Services Management</p>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('login')">Sign In</button>
+      <button class="tab" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="panel active" id="panel-login">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="you@example.com"/>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="loginPass" placeholder="••••••••"/>
+      </div>
+      <button class="btn btn-primary" id="loginBtn" onclick="login()">Sign In →</button>
+      <div class="msg" id="loginMsg"></div>
+
+      <div class="demo-section">
+        <div class="demo-label">Demo accounts</div>
+        <div class="demo-pills">
+          <div class="demo-pill" onclick="fillDemo('citizen@demo.com','demo123')">👤 Citizen</div>
+          <div class="demo-pill" onclick="fillDemo('tech@demo.com','demo123')">🔧 Technician</div>
+          <div class="demo-pill" onclick="fillDemo('manager@demo.com','demo123')">📊 Manager</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REGISTER (citizens only) -->
+    <div class="panel" id="panel-register">
+      <div class="field">
+        <label>Role</label>
+        <div class="role-grid" id="roleGrid">
+          <div class="role-btn sel" onclick="selRole('citizen',this)">
+            <div class="icon">👤</div><div class="lbl">Citizen</div>
+          </div>
+          <div class="role-btn" onclick="selRole('technician',this)">
+            <div class="icon">🔧</div><div class="lbl">Technician</div>
+          </div>
+          <div class="role-btn" onclick="selRole('manager',this)">
+            <div class="icon">📊</div><div class="lbl">Manager</div>
+          </div>
+        </div>
+        <input type="hidden" id="regRole" value="citizen"/>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Full Name</label>
+          <input type="text" id="regName" placeholder="Ahmed Khalidi"/>
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="regEmail" placeholder="ahmed@city.ps"/>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>National ID</label>
+          <input type="text" id="regNid" placeholder="9001001"/>
+        </div>
+        <div class="field">
+          <label>Phone</label>
+          <input type="text" id="regPhone" placeholder="059 123 4567"/>
+        </div>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="regPass" placeholder="Choose a password"/>
+      </div>
+      <div class="field" id="areaField">
+        <label>Home Area</label>
+        <select id="regArea">
+          <option value="dist_1">Old City</option>
+          <option value="dist_2">Commercial Center</option>
+          <option value="dist_3">University Zone</option>
+          <option value="dist_4">Northern Suburbs</option>
+          <option value="dist_5">Industrial Area</option>
+          <option value="dist_6">Residential East</option>
+          <option value="dist_7">Residential West</option>
+          <option value="dist_8">Southern Zone</option>
+        </select>
+      </div>
+      <div class="field" id="deptField" style="display:none">
+        <label>Department</label>
+        <select id="regDept">
+          <option value="dept_1">Waste & Sanitation</option>
+          <option value="dept_2">Street Lighting</option>
+          <option value="dept_3">Traffic & Roads</option>
+          <option value="dept_4">Infrastructure</option>
+          <option value="dept_5">Water & Utilities</option>
+          <option value="dept_6">Emergency Services</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="regBtn" onclick="register()">Create Account →</button>
+      <div class="msg" id="regMsg"></div>
+    </div>
+  </div>
+
+  <div class="hint">
+    Demo prototype · NoSQL Databases Course 2025
+  </div>
+</div>
+
+<script>
+  function switchTab(t) {
+    document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', (i===0&&t==='login')||(i===1&&t==='register')));
+    document.getElementById('panel-login').classList.toggle('active', t==='login');
+    document.getElementById('panel-register').classList.toggle('active', t==='register');
+  }
+
+  function selRole(role, el) {
+    document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('sel'));
+    el.classList.add('sel');
+    document.getElementById('regRole').value = role;
+    document.getElementById('areaField').style.display = role === 'citizen' ? 'block' : 'none';
+    document.getElementById('deptField').style.display = role === 'technician' ? 'block' : 'none';
+  }
+
+  function msg(id, text, type) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'msg ' + type;
+  }
+
+  function fillDemo(email, pass) {
+    document.getElementById('loginEmail').value = email;
+    document.getElementById('loginPass').value = pass;
+  }
+
+  // Role → redirect map
+  const REDIRECTS = { citizen: 'citizen.html', technician: 'technician.html', manager: 'manager.html' };
+
+  async function login() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass  = document.getElementById('loginPass').value;
+    if (!email || !pass) return msg('loginMsg', 'Email and password required.', 'err');
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true; btn.textContent = 'Signing in…';
+
+    try {
+      const res  = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, password: pass }) });
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role',  data.user.role);
+        localStorage.setItem('name',  data.user.name);
+        localStorage.setItem('id',    data.user.id);
+        msg('loginMsg', `Welcome, ${data.user.name}!`, 'ok');
+        setTimeout(() => window.location.href = REDIRECTS[data.user.role] || 'citizen.html', 700);
+      } else {
+        msg('loginMsg', data.error || 'Login failed.', 'err');
+      }
+    } catch {
+      // DEMO: simulate role routing without backend
+      const roleMap = { 'citizen@demo.com':'citizen', 'tech@demo.com':'technician', 'manager@demo.com':'manager' };
+      const role = roleMap[email] || 'citizen';
+      localStorage.setItem('token', 'demo-token');
+      localStorage.setItem('role', role);
+      localStorage.setItem('name', email.split('@')[0]);
+      localStorage.setItem('id', 'demo-id');
+      msg('loginMsg', 'Demo mode — redirecting…', 'ok');
+      setTimeout(() => window.location.href = REDIRECTS[role], 700);
+    }
+    btn.disabled = false; btn.textContent = 'Sign In →';
+  }
+
+  async function register() {
+    const name  = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const pass  = document.getElementById('regPass').value;
+    const role  = document.getElementById('regRole').value;
+    if (!name || !email || !pass) return msg('regMsg', 'Name, email, and password required.', 'err');
+
+    const body = {
+      name, email, password: pass, role,
+      national_id: document.getElementById('regNid').value.trim(),
+      phone: document.getElementById('regPhone').value.trim(),
+      area_id: document.getElementById('regArea').value,
+      area_name: document.getElementById('regArea').options[document.getElementById('regArea').selectedIndex]?.text || '',
+      dept_id: document.getElementById('regDept').value,
+    };
+    const btn = document.getElementById('regBtn');
+    btn.disabled = true; btn.textContent = 'Creating…';
+    try {
+      const res  = await fetch('/api/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', role);
+        localStorage.setItem('name', name);
+        msg('regMsg', 'Account created! Redirecting…', 'ok');
+        setTimeout(() => window.location.href = REDIRECTS[role], 700);
+      } else { msg('regMsg', data.error || 'Registration failed.', 'err'); }
+    } catch {
+      msg('regMsg', 'Demo mode — no backend. Use Sign In with demo accounts.', 'err');
+    }
+    btn.disabled = false; btn.textContent = 'Create Account →';
+  }
+</script>
+</body>
+</html>

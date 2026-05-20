@@ -33,10 +33,10 @@ def dept_technicians(dept_id):
     return jsonify({"dept_id": dept_id, "technicians": rows}), 200
 
 
-@graph_bp.route("/api/graph/shared-districts", methods=["GET"])
-def shared_districts():
-    rows = neo4j.query_shared_district_departments()
-    return jsonify({"shared_district_coverage": rows}), 200
+@graph_bp.route("/api/graph/shared-areas", methods=["GET"])
+def shared_areas():
+    rows = neo4j.query_shared_area_departments()
+    return jsonify({"shared_area_coverage": rows}), 200
 
 
 @graph_bp.route("/api/graph/top-technicians", methods=["GET"])
@@ -46,17 +46,17 @@ def top_technicians():
     return jsonify({"top_technicians": rows}), 200
 
 
-@graph_bp.route("/api/graph/cross-district-reporters", methods=["GET"])
-def cross_district_reporters():
-    rows = neo4j.query_cross_district_reporters()
-    return jsonify({"cross_district_reporters": rows}), 200
+@graph_bp.route("/api/graph/cross-area-reporters", methods=["GET"])
+def cross_area_reporters():
+    rows = neo4j.query_cross_area_reporters()
+    return jsonify({"cross_area_reporters": rows}), 200
 
 
 # ─── Category A — Basic ─────────────────────────────────────────────────────
 
 @graph_bp.route("/api/graph/department-coverage", methods=["GET"])
 def department_coverage():
-    """A2. Department → districts coverage map."""
+    """A2. Department → area coverage map."""
     rows = neo4j.query_department_coverage()
     return jsonify({"department_coverage": rows}), 200
 
@@ -71,11 +71,11 @@ def citizen_journey():
 
 # ─── Category B — Intermediate ──────────────────────────────────────────────
 
-@graph_bp.route("/api/graph/district-workload", methods=["GET"])
-def district_workload():
-    """B3. Districts ranked by open issues."""
-    rows = neo4j.query_district_workload()
-    return jsonify({"district_workload": rows}), 200
+@graph_bp.route("/api/graph/area-workload", methods=["GET"])
+def area_workload():
+    """B3. Areas ranked by open issues."""
+    rows = neo4j.query_area_workload()
+    return jsonify({"area_workload": rows}), 200
 
 
 @graph_bp.route("/api/graph/department-efficiency", methods=["GET"])
@@ -111,20 +111,20 @@ def collaboration_gaps():
     return jsonify({"collaboration_gaps": rows}), 200
 
 
-@graph_bp.route("/api/graph/district-connectivity", methods=["GET"])
-def district_connectivity():
-    """District health / connectivity score."""
-    rows = neo4j.query_district_connectivity()
-    return jsonify({"district_connectivity": rows}), 200
+@graph_bp.route("/api/graph/area-connectivity", methods=["GET"])
+def area_connectivity():
+    """Area health / connectivity score."""
+    rows = neo4j.query_area_connectivity()
+    return jsonify({"area_connectivity": rows}), 200
 
 
-@graph_bp.route("/api/graph/explore-district", methods=["GET"])
-def explore_district():
-    """C5. All entities within N hops of a district."""
+@graph_bp.route("/api/graph/explore-area", methods=["GET"])
+def explore_area():
+    """C5. All entities within N hops of an area."""
     name = request.args.get("name", "University Zone")
     hops = request.args.get("hops", 3, type=int)
     rows = neo4j.query_variable_length_path(name, hops)
-    return jsonify({"district": name, "max_hops": hops, "connected": rows}), 200
+    return jsonify({"area": name, "max_hops": hops, "connected": rows}), 200
 
 
 # ─── Visual Graph ────────────────────────────────────────────────────────────

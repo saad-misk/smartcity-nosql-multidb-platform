@@ -173,7 +173,7 @@
     .flow-db.mongo  { background: rgba(77,179,61,.12); color: #15803d; }
     .flow-db.neo4j  { background: rgba(29,78,216,.1);  color: var(--primary); }
     .flow-db.redis  { background: rgba(220,38,38,.08); color: var(--danger); }
-    .flow-db.cass   { background: var(--purple-lt); color: var(--purple); }
+    .flow-db.es     { background: #fef3c7; color: #b45309; }
     .flow-arrow { color: var(--text-lt); padding: 0 6px; font-size: 1rem; flex-shrink: 0; }
 
     /* ── My Requests ── */
@@ -191,10 +191,10 @@
       padding: 3px 10px; border-radius: 20px;
       font-size: 0.72rem; font-weight: 600; border: 1px solid; white-space: nowrap; flex-shrink: 0;
     }
-    .badge.OPEN       { background: var(--warn-lt); color: var(--warn); border-color: rgba(217,119,6,.2); }
-    .badge.RESOLVED   { background: var(--accent-lt); color: var(--accent); border-color: rgba(5,150,105,.2); }
-    .badge.IN_PROGRESS{ background: var(--primary-lt); color: var(--primary); border-color: rgba(29,78,216,.2); }
-    .badge.ASSIGNED   { background: var(--purple-lt); color: var(--purple); border-color: rgba(124,58,237,.2); }
+    .badge.pending    { background: var(--warn-lt); color: var(--warn); border-color: rgba(217,119,6,.2); }
+    .badge.resolved   { background: var(--accent-lt); color: var(--accent); border-color: rgba(5,150,105,.2); }
+    .badge.in_progress{ background: var(--primary-lt); color: var(--primary); border-color: rgba(29,78,216,.2); }
+    .badge.assigned   { background: var(--purple-lt); color: var(--purple); border-color: rgba(124,58,237,.2); }
 
     /* ── Login prompt ── */
     .login-prompt {
@@ -232,7 +232,7 @@
   <div class="page-header">
     <div class="page-title">📋 Report a City Issue</div>
     <div class="page-desc">
-      Your report is stored simultaneously across MongoDB, Neo4j, Redis, and Cassandra.
+      Your report is similarity-checked in Elasticsearch, then stored across MongoDB, Neo4j, and Redis.
     </div>
   </div>
 
@@ -247,6 +247,12 @@
           <div class="flow-icon">📋</div>
           <div class="flow-name">Submit</div>
           <div class="flow-db neo4j">Flask API</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">🔎</div>
+          <div class="flow-name">Similarity</div>
+          <div class="flow-db es">Elasticsearch</div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-step">
@@ -265,12 +271,6 @@
           <div class="flow-icon">⚡</div>
           <div class="flow-name">Cache</div>
           <div class="flow-db redis">Redis</div>
-        </div>
-        <div class="flow-arrow">→</div>
-        <div class="flow-step">
-          <div class="flow-icon">📝</div>
-          <div class="flow-name">Event Log</div>
-          <div class="flow-db cass">Cassandra</div>
         </div>
       </div>
 
@@ -331,11 +331,11 @@
             <textarea id="description" placeholder="Describe the issue in detail — location, severity, and any relevant context…"></textarea>
           </div>
 
-          <!-- District + GPS -->
+          <!-- Area + GPS -->
           <div class="field-row">
             <div class="field">
-              <label for="district">District <span class="required">*</span></label>
-              <select id="district">
+              <label for="area">Area <span class="required">*</span></label>
+              <select id="area">
                 <option value="dist_1">Old City</option>
                 <option value="dist_2">Commercial Center</option>
                 <option value="dist_3">University Zone</option>
@@ -416,11 +416,16 @@
       const token = localStorage.getItem('token');
       if (!token) return showMsg('Please log in first to submit a request.', 'error');
 
+      const areaSelect = document.getElementById('area');
+      const areaName = areaSelect.options[areaSelect.selectedIndex]?.text || '';
+
       const body = {
         category:    document.getElementById('category').value,
-        subcategory: document.getElementById('subcategory').value,
+        subCategory: document.getElementById('subcategory').value,
         description: document.getElementById('description').value.trim(),
-        district_id: document.getElementById('district').value,
+        areaId:      areaSelect.value,
+        areaName:    areaName,
+        areaDescription: '',
         lat:         parseFloat(document.getElementById('lat').value),
         lng:         parseFloat(document.getElementById('lng').value),
       };
@@ -439,7 +444,8 @@
       btn.disabled = false; btn.innerHTML = '🚀 Submit Request to City';
 
       if (res.ok) {
-        showMsg(`✓ Request submitted! ID: ${data.request_id} · Assigned to: ${data.assigned_to}`, 'success');
+        const boost = data.similarity_boosted ? ' · similarity boosted' : '';
+        showMsg(`✓ Request submitted! ID: ${data.request_id} · Priority: ${data.priority}${boost}`, 'success');
         document.getElementById('description').value = '';
         selectedCat = '';
         document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
@@ -463,15 +469,15 @@
         return;
       }
 
-      const statusMap = { OPEN:'OPEN', RESOLVED:'RESOLVED', IN_PROGRESS:'IN_PROGRESS', ASSIGNED:'ASSIGNED' };
+      const statusMap = { pending:'pending', assigned:'assigned', in_progress:'in_progress', resolved:'resolved' };
       document.getElementById('myRequests').innerHTML =
         `<div class="req-list">${data.requests.slice(0, 8).map(r => `
           <div class="req-item">
             <div>
-              <div class="req-cat">${r.category} · ${r.subcategory || ''}</div>
+              <div class="req-cat">${r.category} · ${r.subCategory || ''}</div>
               <div class="req-desc">${(r.description || '').slice(0, 80)}${r.description?.length > 80 ? '…' : ''}</div>
             </div>
-            <span class="badge ${statusMap[r.status] || 'OPEN'}">${r.status}</span>
+            <span class="badge ${statusMap[r.status] || 'pending'}">${r.status}</span>
           </div>
         `).join('')}</div>`;
     }

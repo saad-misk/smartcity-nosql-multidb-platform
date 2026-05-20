@@ -117,7 +117,7 @@
     .chip.mongo  { background: rgba(77,179,61,.15);  border-color: rgba(77,179,61,.4);  color: #86efac; }
     .chip.neo4j  { background: rgba(96,165,250,.15); border-color: rgba(96,165,250,.4); color: #93c5fd; }
     .chip.redis  { background: rgba(252,100,100,.15);border-color: rgba(252,100,100,.4);color: #fca5a5; }
-    .chip.cass   { background: rgba(167,139,250,.15);border-color: rgba(167,139,250,.4);color: #c4b5fd; }
+    .chip.es     { background: rgba(245,158,11,.15);border-color: rgba(245,158,11,.4);color: #fbbf24; }
 
     /* ── Main layout ── */
     .main-wrapper {
@@ -333,7 +333,7 @@
         <div class="chip mongo">MongoDB</div>
         <div class="chip neo4j">Neo4j</div>
         <div class="chip redis">Redis</div>
-        <div class="chip cass">Cassandra</div>
+        <div class="chip es">Elasticsearch</div>
       </div>
     </div>
   </section>
@@ -394,8 +394,8 @@
           </div>
         </div>
         <div class="field">
-          <label for="regDistrict">Home District</label>
-          <select id="regDistrict">
+          <label for="regArea">Home Area</label>
+          <select id="regArea">
             <option value="dist_1">Old City</option>
             <option value="dist_2">Commercial Center</option>
             <option value="dist_3">University Zone</option>
@@ -420,7 +420,7 @@
         <div class="ql-icon blue">📊</div>
         <div>
           <div class="ql-title">Analytics Dashboard</div>
-          <div class="ql-desc">KPIs, top issues, district heatmap</div>
+          <div class="ql-desc">KPIs, top issues, area heatmap</div>
         </div>
         <div class="ql-arrow">›</div>
       </a>
@@ -451,7 +451,7 @@
       <div class="footer-db"><div class="footer-dot" style="background:#4db33d"></div>MongoDB</div>
       <div class="footer-db"><div class="footer-dot" style="background:#018bff"></div>Neo4j</div>
       <div class="footer-db"><div class="footer-dot" style="background:#ff4438"></div>Redis</div>
-      <div class="footer-db"><div class="footer-dot" style="background:#a78bfa"></div>Cassandra</div>
+      <div class="footer-db"><div class="footer-dot" style="background:#f59e0b"></div>Elasticsearch</div>
     </div>
   </footer>
 
@@ -487,13 +487,15 @@
     }
 
     async function register() {
+      const areaSelect = document.getElementById('regArea');
+      const areaName = areaSelect.options[areaSelect.selectedIndex]?.text || '';
       const body = {
         name:        document.getElementById('regName').value.trim(),
         email:       document.getElementById('regEmail').value.trim(),
         national_id: document.getElementById('regNid').value.trim(),
         phone:       document.getElementById('regPhone').value.trim(),
-        district_id: document.getElementById('regDistrict').value,
-        lat: 31.902, lng: 35.203
+        area_id:     areaSelect.value,
+        area_name:   areaName
       };
       if (!body.name || !body.email) return showMsg('regMsg', 'Full name and email are required.', 'error');
 

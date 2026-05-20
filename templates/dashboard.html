@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Analytics Dashboard — SmartCity Platform</title>
-  <meta name="description" content="Real-time analytics dashboard for SmartCity platform — KPIs, issue categories, district heatmap, and response times."/>
+  <meta name="description" content="Real-time analytics dashboard for SmartCity platform — KPIs, issue categories, area heatmap, and response times."/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
     :root {
@@ -167,6 +167,13 @@
       margin-bottom: 4px; display: flex; align-items: center; gap: 7px;
     }
     .card-desc { font-size: 0.76rem; color: var(--text-lt); margin-bottom: 18px; }
+    .search-row {
+      display: flex; gap: 8px; align-items: center; margin-bottom: 12px;
+    }
+    .search-row input {
+      flex: 1; padding: 8px 10px; border-radius: 8px; border: 1.5px solid var(--border-dk);
+      font-size: 0.82rem; outline: none; background: var(--surface);
+    }
 
     /* ── Bar Chart ── */
     .bar-list { display: flex; flex-direction: column; gap: 14px; }
@@ -269,7 +276,7 @@
   <div class="page-header">
     <div>
       <div class="page-title">📊 Analytics Dashboard</div>
-      <div class="page-desc">Real-time aggregation from MongoDB, Redis, Neo4j, and Cassandra</div>
+      <div class="page-desc">Real-time aggregation from MongoDB, Redis, Neo4j, and Elasticsearch</div>
     </div>
     <button class="refresh-btn" onclick="loadAll()">↻ Refresh Data</button>
   </div>
@@ -315,9 +322,9 @@
         <div class="bar-list" id="topIssues"><div class="empty"><div class="spin">⟳</div><div>Loading…</div></div></div>
       </div>
       <div class="card">
-        <div class="card-title">🗺️ Requests by District</div>
+        <div class="card-title">🗺️ Requests by Area</div>
         <div class="card-desc">Geographic distribution of reported issues</div>
-        <div class="bar-list" id="byDistrict"><div class="empty"><div class="spin">⟳</div><div>Loading…</div></div></div>
+        <div class="bar-list" id="byArea"><div class="empty"><div class="spin">⟳</div><div>Loading…</div></div></div>
       </div>
     </div>
 
@@ -325,9 +332,13 @@
     <div class="section-title">Performance & Engagement</div>
     <div class="two-col">
       <div class="card">
-        <div class="card-title">⏱️ Avg Response Time by Department</div>
-        <div class="card-desc">Average hours from submission to resolution</div>
-        <div id="respTime"><div class="empty"><div class="spin">⟳</div><div>Loading…</div></div></div>
+        <div class="card-title">🔎 Similar Requests (Elasticsearch)</div>
+        <div class="card-desc">Find issues similar to a short description</div>
+        <div class="search-row">
+          <input id="esQuery" type="text" placeholder="e.g. broken street light near university" />
+          <button class="refresh-btn" onclick="runEsSearch()">Search</button>
+        </div>
+        <div id="esResults" class="empty">Enter a description to search.</div>
       </div>
       <div class="card">
         <div class="card-title">🏆 Civic Score Leaderboard</div>
@@ -385,6 +396,27 @@
       return `<div class="empty"><div class="empty-icon">📭</div><div>${msg}</div></div>`;
     }
 
+    async function runEsSearch() {
+      const q = document.getElementById('esQuery').value.trim();
+      const target = document.getElementById('esResults');
+      if (!q) {
+        target.innerHTML = emptyState('Enter a description to search.');
+        return;
+      }
+      target.innerHTML = '<div class="empty"><div class="spin">⟳</div><div>Searching…</div></div>';
+      const res = await fetchJSON(`/api/search/similar?q=${encodeURIComponent(q)}`);
+      if (res?.results?.length) {
+        target.innerHTML = `<table>
+          <thead><tr><th>Request ID</th><th>Score</th></tr></thead>
+          <tbody>${res.results.map(r => `
+            <tr><td>${r.requestId}</td><td><strong>${r.score?.toFixed(2)}</strong></td></tr>
+          `).join('')}</tbody>
+        </table>`;
+      } else {
+        target.innerHTML = emptyState('No similar requests found.');
+      }
+    }
+
     async function loadAll() {
       // DB Health
       const health = await fetchJSON('/health');
@@ -418,35 +450,16 @@
         document.getElementById('topIssues').innerHTML = emptyState('No data yet — seed the database first.');
       }
 
-      // By District
-      const dist = await fetchJSON('/api/analytics/by-district?days=30');
-      if (dist?.districts?.length) {
-        const max = dist.districts[0].total;
-        document.getElementById('byDistrict').innerHTML =
-          `<div class="bar-list">${dist.districts.map((d,i) =>
-            barHTML(d.district, d.total, max, `${d.total} (${d.resolved} resolved)`, BAR_COLORS[i % BAR_COLORS.length])
+      // By Area
+      const areas = await fetchJSON('/api/analytics/by-area?days=30');
+      if (areas?.areas?.length) {
+        const max = areas.areas[0].total;
+        document.getElementById('byArea').innerHTML =
+          `<div class="bar-list">${areas.areas.map((a,i) =>
+            barHTML(a.areaName || a.areaId, a.total, max, `${a.total} (${a.resolved} resolved)`, BAR_COLORS[i % BAR_COLORS.length])
           ).join('')}</div>`;
       } else {
-        document.getElementById('byDistrict').innerHTML = emptyState('No data yet.');
-      }
-
-      // Response Time
-      const resp = await fetchJSON('/api/analytics/response-time');
-      if (resp?.departments?.length) {
-        const rows = resp.departments.map(d =>
-          `<tr>
-            <td>${d.department}</td>
-            <td><strong>${d.avg_hours?.toFixed(1) ?? '—'}</strong> hrs</td>
-            <td><span class="badge resolved">${d.count} resolved</span></td>
-          </tr>`
-        ).join('');
-        document.getElementById('respTime').innerHTML =
-          `<table>
-            <thead><tr><th>Department</th><th>Avg Time</th><th>Count</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>`;
-      } else {
-        document.getElementById('respTime').innerHTML = emptyState('No resolved requests yet.');
+        document.getElementById('byArea').innerHTML = emptyState('No data yet.');
       }
 
       // Leaderboard
