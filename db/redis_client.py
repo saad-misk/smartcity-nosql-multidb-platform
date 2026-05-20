@@ -54,9 +54,6 @@ def create_session(user_id, role="citizen", citizen_id=None,
     r = get_redis()
     token = str(uuid.uuid4())
     payload = {"user_id": user_id, "role": role}
-    if citizen_id:    payload["citizen_id"]    = citizen_id
-    if technician_id: payload["technician_id"] = technician_id
-    if username:      payload["username"]       = username
     r.setex(f"session:{token}", TTL_SESSION, json.dumps(payload))
     return token
 

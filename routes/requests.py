@@ -48,7 +48,7 @@ def submit_request():
         return jsonify({"error": "Unauthorized — session expired or missing"}), 401
 
     data = request.json or {}
-    required = ["category", "subCategory", "description", "lat", "lng", "areaId", "areaName"]
+    required = ["category", "subCategory", "description", "areaId", "areaName"]
     if not all(k in data for k in required):
         return jsonify({"error": "Missing required fields"}), 400
 

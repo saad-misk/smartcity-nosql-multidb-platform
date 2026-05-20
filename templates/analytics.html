@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City Analytics - SmartCity</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="nav">
+        <a href="/analytics" class="nav-brand">SmartCity Platform</a>
+        <div class="nav-actions">
+            <span class="user-info">City Manager</span>
+            <button onclick="logout()" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container" id="analytics-dashboard">
+        <h2 style="margin-bottom: 1.5rem;">City Analytics Dashboard</h2>
+        
+        <!-- Overview Stats -->
+        <div class="card-grid">
+            <div class="card stat">
+                <div class="stat-value" id="total-requests">0</div>
+                <div class="stat-label">Total Requests</div>
+            </div>
+            <div class="card stat">
+                <div class="stat-value" id="open-requests">0</div>
+                <div class="stat-label">Open Requests</div>
+            </div>
+            <div class="card stat">
+                <div class="stat-value" id="avg-resolution-time">0h</div>
+                <div class="stat-label">Avg Resolution Time</div>
+            </div>
+            <div class="card stat">
+                <div class="stat-value" id="citizens-count">0</div>
+                <div class="stat-label">Registered Citizens</div>
+            </div>
+        </div>
+        
+        <div class="card-grid">
+            <!-- Top Issues -->
+            <div class="chart-container">
+                <div class="chart-title">Top Reported Issues (30 days)</div>
+                <div id="top-issues">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Area Breakdown -->
+            <div class="chart-container">
+                <div class="chart-title">Issues by Area</div>
+                <div id="area-breakdown">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-grid">
+            <!-- Response Time -->
+            <div class="chart-container">
+                <div class="chart-title">Avg Response Time by Department</div>
+                <div id="response-time">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Leaderboard -->
+            <div class="card">
+                <div class="card-header">Top Citizens (Civic Score)</div>
+                <div id="leaderboard">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Graph Stats -->
+        <div class="card">
+            <div class="card-header">Graph Database Insights</div>
+            <div class="card-grid" id="graph-stats">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
